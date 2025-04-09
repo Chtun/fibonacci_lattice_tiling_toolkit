@@ -1,0 +1,38 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fibonacci_lattice_tiling_toolkit"
+version = "0.1.0"
+description = "A toolkit for visualizing fibonacci lattice tiling and generating heatmaps in 360-degree video viewport trajectories"
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+authors = [
+    { name = "Chitsein Htun", email = "chtun@live.com" }
+]
+dependencies = [
+    "numpy>=1.20",
+    "pandas>=1.3",
+    "matplotlib>=3.4",
+    "pyvista>=0.44.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "black>=22.0",
+    "isort>=5.0",
+    "mypy>=0.9",
+    "sphinx>=4.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fibonacci_lattice_tiling_toolkit"]
+
+[tool.hatch.build]
+include = [
+    "src/fibonacci_lattice_tiling_toolkit/**/*.py",
+    "src/fibonacci_lattice_tiling_toolkit/**/*.pyi",
+]

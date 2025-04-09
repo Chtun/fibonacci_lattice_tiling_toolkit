@@ -1,0 +1,447 @@
+# Spherical Tiling and Heatmap Visualization API Reference
+
+## Table of Contents
+1. [Data Types Module](#data-types-module)
+2. [Data Utilities Module](#data-utilities-module)
+3. [Heatmap Utilities Module](#heatmap-utilities-module)
+4. [Visualization Utilities Module](#visualization-utilities-module)
+5. [Configuration Module](#configuration-module)
+
+## Data Types Module
+`fibonacci_lattice_tiling_toolkit.data_types`
+
+### Classes
+
+#### SpatialError
+Base exception class for spatial-related errors.
+
+#### ValidationError
+Exception raised when spatial data validation fails.
+
+#### Point
+```python
+@dataclass(frozen=True)
+class Point:
+    """Represents a point in pixel coordinates."""
+    pixel_x: int
+    pixel_y: int
+    
+    def as_tuple() -> Tuple[int, int]:
+        """Returns coordinates as (x, y) tuple."""
+```
+
+#### RadialPoint
+```python
+@dataclass(frozen=True)
+class RadialPoint:
+    """Represents a point in spherical coordinates."""
+    lon: float  # [-180, 180]
+    lat: float  # [-90, 90]
+    
+    def normalize_coordinates() -> 'RadialPoint':
+        """Returns a new RadialPoint with normalized coordinates."""
+    
+    def as_tuple() -> Tuple[float, float]:
+        """Returns coordinates as (longitude, latitude) tuple."""
+```
+
+#### Vector
+```python
+@dataclass(frozen=True)
+class Vector:
+    """Represents a point in 3D Cartesian coordinates."""
+    x: float
+    y: float
+    z: float
+    
+    def length() -> float:
+        """Calculates vector length."""
+    
+    def normalize() -> 'Vector':
+        """Returns normalized vector."""
+    
+    def dot_product(other: 'Vector') -> float:
+        """Computes dot product with another vector."""
+    
+    def as_tuple() -> Tuple[float, float, float]:
+        """Returns coordinates as (x, y, z) tuple."""
+    
+    @classmethod
+    def from_spherical(cls, lon: float, lat: float) -> 'Vector':
+        """Creates vector from spherical coordinates."""
+```
+
+## Data Utilities Module
+`fibonacci_lattice_tiling_toolkit.data_utils`
+
+### Functions
+
+#### validate_video_dimensions
+```python
+def validate_video_dimensions(width: int, height: int) -> None:
+    """Validates video dimensions."""
+```
+
+#### normalize_to_pixel
+```python
+def normalize_to_pixel(normalized: np.ndarray, dimension: int) -> np.ndarray:
+    """Converts normalized coordinates to pixel coordinates."""
+```
+
+#### pixel_to_spherical
+```python
+def pixel_to_spherical(
+    point: Point,
+    video_width: int,
+    video_height: int
+) -> RadialPoint:
+    """Converts pixel coordinates to spherical coordinates."""
+```
+
+#### process_viewport_data
+```python
+def process_viewport_data(
+    filepath: Union[str, Path],
+    video_width: int,
+    video_height: int
+) -> Tuple[pd.DataFrame, str]:
+    """Processes viewport center trajectory data."""
+```
+
+#### format_trajectory_data
+```python
+def format_trajectory_data(
+    trajectory_data: List[Tuple[str, pd.DataFrame]]
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Formats trajectory data for analysis."""
+```
+
+## Heatmap Utilities Module
+`fibonacci_lattice_tiling_toolkit.heatmap_utils`
+
+### Classes
+
+#### HeatmapConfig
+```python
+@dataclass
+class HeatmapConfig:
+    """Configuration for heatmap calculations."""
+    fov_angle (float): Field of view angle in degrees.
+    use_erroneous_ERP_distance (bool): True if using the ERP Euclidean distance. If false, use geodesic distance on sphere.
+    heat_function (HeatFunction): The specified heat function to use. It takes in a value from 0 to 1 and returns the given heat.
+```
+
+### Functions
+
+#### vector_angle_distance
+```python
+def vector_angle_distance(v1: Vector, v2: Vector) -> float:
+    """Computes angle between vectors in radians."""
+```
+
+#### find_geodesic_distances
+```python
+def find_geodesic_distances(
+    vector: Vector,
+    tile_centers: List[Vector]
+) -> np.ndarray:
+    """Finds geodesic distances between vector and tile centers."""
+```
+
+#### generate_fibonacci_lattice
+```python
+def generate_fibonacci_lattice(num_points: int) -> List[Vector]:
+    """Generates Fibonacci lattice points on sphere."""
+```
+
+#### calculate_tile_weights
+```python
+def calculate_tile_weights(
+    vector: Vector,
+    tile_centers: List[Vector],
+    config: HeatmapConfig
+) -> Dict[Vector, float]:
+    """Calculates weight distribution across tiles."""
+```
+
+## Visualization Utilities Module
+`fibonacci_lattice_tiling_toolkit.visualization_utils`
+
+### Functions
+
+#### save_fb_tiling_visualization_glb
+```python
+def save_fb_tiling_visualization_glb(
+        tile_count: int,
+        output_dir: Path
+        ):
+    """Saves a video of the tiling on a sphere for fibonacci lattice.
+    
+    Args:
+        tile_count: the number of Fibonacci lattice tiles to generate.
+        output_dir: Path for output video folder.
+    """
+```
+
+#### save_fb_tiling_visualization_image
+```python
+def save_fb_tiling_visualization_image(
+        tile_count: int,
+        output_dir: Path,
+        camera_position: Tuple[float, float, float]=(0, 0, 5),
+        camera_up: Tuple[float, float, float]= (0, 1, 0),
+        camera_focal_point: Tuple[float, float, float] = (0,0,0)
+        ):
+    """Saves a video of the tiling on a sphere for fibonacci lattice.
+    
+    Args:
+        tile_count: the number of Fibonacci lattice tiles to generate.
+        output_dir: Path for output video folder.
+        camera_position: The camera position.
+        camera_up: The camera "up" vector.
+        camera_focal_point: The focal point to focus on.
+    """
+```
+
+#### save_fb_tiling_visualization_video
+```python
+def save_fb_tiling_visualization_video(tile_count: int, output_dir: Path, horizontal_pan: bool=True, vertical_pan: bool=True):
+    """Saves a video of the tiling on a sphere for fibonacci lattice.
+    
+    Args:
+        tile_count: the number of Fibonacci lattice tiles to generate.
+        output_dir: Path for output video folder.
+        horizontal_pan: Whetehr to horizontally pan on the video.
+        vertical_pan: Whether to vertically pan on the video.
+    """
+```
+
+#### save_tiling_visualization_glb
+```python
+def save_tiling_visualization_glb(
+        tile_boundaries: Dict[int, List[List[Vector]]],
+        output_dir: Path,
+        output_prefix: str=""
+        ):
+    """Saves a video of the tiling on a sphere for fibonacci lattice.
+    
+    Args:
+        tile_boundaries: The boundaries for the tiles to generate.
+        output_dir: Path for output video folder.
+    """
+```
+
+#### save_tiling_visualization_image
+```python
+def save_tiling_visualization_image(
+        tile_boundaries: Dict[int, List[List[Vector]]],
+        output_dir: Path,
+        output_prefix: str="",
+        camera_position: Tuple[float, float, float]=(0, 0, 5),
+        camera_up: Tuple[float, float, float]= (0, 1, 0),
+        camera_focal_point: Tuple[float, float, float] = (0,0,0),
+        camera_azimuth: int = 0,
+        camera_elevation: int = 0
+        ):
+    """Saves a video of the tiling on a sphere for fibonacci lattice.
+    
+    Args:
+        tile_boundaries: The boundaries for the tiles to generate.
+        output_dir: Path for output video folder.
+        camera_position: The camera position.
+        camera_up: The camera "up" vector.
+        camera_focal_point: The focal point to focus on.
+        camera_azimuth: The azimuth angle to set the camera to.
+        camera_elevation: int = The elevation angle to set the camera to.
+    """
+```
+
+#### save_tiling_visualization_video
+```python
+def save_tiling_visualization_video(
+        tile_boundaries: Dict[int, List[List[Vector]]],
+        output_dir: Path,
+        output_prefix: str="",
+        horizontal_pan: bool=True,
+        vertical_pan: bool=True,
+        camera_position: Tuple[float, float, float]=(0, 0, 5),
+        camera_up: Tuple[float, float, float]= (0, 1, 0),
+        camera_focal_point: Tuple[float, float, float] = (0,0,0)
+        ):
+    """Saves a video of the tiling on a sphere for fibonacci lattice.
+    
+    Args:
+        tile_boundaries: The boundaries for the tiles to generate.
+        output_dir: Path for output video folder.
+        horizontal_pan: Whetehr to horizontally pan on the video.
+        vertical_pan: Whether to vertically pan on the video.
+        camera_position: The camera position.
+        camera_up: The camera "up" vector.
+        camera_focal_point: The focal point to focus on.
+    """
+```
+
+#### save_tiling_visualization_with_weights
+```python
+def save_tiling_visualization_with_weights(
+        tile_boundaries: Dict[str, List[List[Tuple[float, float, float]]]],
+        tile_weights: Dict[str, float],
+        output_dir: Path,
+        steps=500,
+        output_prefix: str=""
+        ):
+    """Generates a .glb of the tiling visualization with weights (heatmap) applied to each tile.
+    
+    Args:
+        tile_boundaries: The boundaries for each tile (key is unique identifier for the tile).
+        tile_weights: The weights for each tile (key is unique identifier for the tile).
+        output_dir: Path for output video folder.
+        step: The number of lines to draw for each patch (higher gives better meshes).
+        output_prefix: The prefix before the standard file name.
+    """
+```
+
+#### plot_points_on_sphere
+```python
+def plot_points_on_sphere(
+    vectors: Dict[str, Vector],
+    output_dir: Path,
+    output_prefix: str = ""
+):
+    """
+    Plots a black sphere with latitude and longitude grid lines and small red dots
+    at the positions specified in `vectors`.
+
+    Args:
+        vectors: Dictionary where keys are vector identifiers and values are Vectors
+        representing a point on the sphere.
+        output_dir: The path to the folder to save the file to.
+        output_prefix: A prefix to place before the standard file name.
+    """
+```
+
+#### save_heatmap_ERP_image
+```python
+def save_heatmap_ERP_image(
+    tile_weights: Dict[str, int],
+    num_tiles_horizontal: int,
+    num_tiles_vertical: int,
+    output_dir: Path,
+    output_prefix: str = "",
+):
+    """Save a heatmap of ERP tile weights as an image.
+    
+    Args:
+        tile_weights: Dictionary where keys are tile_center identifiers and values are weights.
+        num_tiles_horizontal: The number of tiles horizontally in the ERP.
+        num_tiles_vertical: The number of tiles vertically in the ERP.
+        output_dir: The path to the folder to save the file to.
+        output_prefix: A prefix to place before the standard file name.
+    """
+```
+
+#### save_CMP_heatmap_image
+```python
+def save_CMP_heatmap_image(
+    tile_weights: Dict[str, float],
+    num_tiles_horizontal: int,
+    num_tiles_vertical: int,
+    output_dir: Path,
+    output_prefix: str = "",
+):
+    """Creates and saves a CMP image using tile weights to generate a heatmap for each face.
+
+    Args:
+        tile_weights: Dictionary where keys are strings in the format "X=1-i_j" or "X=-1-i_j" and values are weights.
+        num_tiles_horizontal: The number of tiles horizontally in the CMP.
+        num_tiles_vertical: The number of tiles vertically in the CMP.
+        output_dir: The path to the folder to save the file to.
+        output_prefix: A prefix to place before the standard file name.
+    """
+```
+
+
+## Usage Example
+
+Here's a complete example showing how the various components work together:
+
+```python
+import os
+from pathlib import Path
+import random
+import math
+import csv
+
+from fibonacci_lattice_tiling_toolkit.utilities.visualization_utils import save_fb_tiling_visualization_video, spherical_interpolation, save_tiling_visualization_with_weights
+from fibonacci_lattice_tiling_toolkit.utilities.data_utils import generate_fibonacci_lattice, get_FB_tile_boundaries, get_ERP_tile_boundaries, get_CMP_tile_boundaries, get_CMP_tile_centers, Vector, vector_angle_distance, find_angular_distances
+from fibonacci_lattice_tiling_toolkit.utilities.heatmap_utils import HeatmapConfig, calculate_tile_weights, calculate_tile_weights_by_index
+
+# Output directory
+output_dir = Path("./output")
+output_dir.mkdir(parents=True, exist_ok=True)
+
+input_dir = Path("./data/Examples")
+input_file_name = "viewer_vectors-Test_Two_Clusters.csv"
+input_vector_file = os.path.join(input_dir, input_file_name)
+
+data_title = "Test_Two_Clusters"
+
+viewer_vectors = {}
+
+with open(input_vector_file, 'r') as f:
+    reader = csv.DictReader(f)
+    for row in reader:
+        key = str(row["key"])
+        x = float(row["x"])
+        y = float(row["y"])
+        z = float(row["z"])
+        viewer_vectors[key] = Vector(x, y, z)
+
+# Heatmap config is defaulted, using Geodesic distance and Gaussian smoothing heat function.
+heatmap_config = HeatmapConfig()
+
+# Generate tiling heatmap for Fibonacci lattice tiling on sphere.
+
+tile_centers = generate_fibonacci_lattice(647)
+tile_boundaries = get_FB_tile_boundaries(647)
+
+output_prefix = f"FB_({len(tile_centers)})_tiling-{data_title}-"
+
+tile_centers_dict = {}
+for i in range(len(tile_centers)):
+  tile_centers_dict[str(i)] = tile_centers[i]
+
+tile_centers = tile_centers_dict
+
+tile_weights = {}
+
+for tile_index in tile_centers:
+  tile_weights[tile_index] = 0.0
+
+for tile_index in list(tile_boundaries.keys()):
+  tile_boundaries[str(tile_index)] = tile_boundaries[tile_index]
+  del tile_boundaries[tile_index]
+
+for viewer in viewer_vectors.keys():
+  viewer_vector = viewer_vectors[viewer]
+
+  tile_weights_list = calculate_tile_weights_by_index(
+      vector=viewer_vector,
+      tile_centers=tile_centers,
+      config=heatmap_config)
+
+  for tile_index in tile_weights_list.keys():
+    tile = tile_centers[tile_index]
+    tile_weight = tile_weights_list[tile_index]
+
+    tile_weights[tile_index] += tile_weight
+
+
+save_tiling_visualization_with_weights(
+    tile_boundaries=tile_boundaries,
+    tile_weights=tile_weights,
+    output_dir=output_dir,
+    output_prefix=output_prefix)
+```
+
+This API reference provides a comprehensive overview of all modules, classes, and functions in the spherical tiling and heatmap visualization system. Each component is documented with its parameters, return types, and basic usage examples.
