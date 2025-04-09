@@ -1,4 +1,4 @@
-# fibonacci_lattice_tiling_toolkit
+# Spherical Fibonacci Lattice Tiling Toolkit
 
 A Python package for visualizing Fibonacci lattice tiling of the sphere and generating heatmaps of 360-degree video viewers. This tool helps visualize how users' attention is distributed when watching 360-degree videos.
 
