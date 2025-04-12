@@ -318,7 +318,7 @@ def save_fb_tiling_visualization_video(tile_count: int, output_dir: Path, horizo
         
         print(f"Video saved: {video_file_name}")
     except Exception as e:
-        print(f"Error saving PNG: {e}")
+        print(f"Error saving video: {e}")
 
     plotter.close()
 
