@@ -10,6 +10,10 @@ A Python package for visualizing Fibonacci lattice tiling of the sphere and gene
 - Configurable tiling and heatmap options.
 - Comprehensive error handling and validation.
 
+## Usage on Google Colab
+
+The following installation and usage can be found formatted at the following Google Colab link: https://colab.research.google.com/drive/1-z_LKIhEdEfP_I1MfTZgC2z-RLlGqJfH?usp=sharing.
+
 ## Installation
 
 ### Requirements
