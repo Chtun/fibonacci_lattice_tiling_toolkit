@@ -208,6 +208,7 @@ class Vector:
                 lat=_lat
             )
     
+    @classmethod
     def from_string(vector_str: str):
         match = re.match(r"Vector\(x=([\d\.\-e]+), y=([\d\.\-e]+), z=([\d\.\-e]+)\)", vector_str)
         if match:
