@@ -151,7 +151,7 @@ def calculate_tile_weights_by_index(
     vector: Vector,
     tile_centers: Dict[str, Vector],
     config: HeatmapConfig
-) -> Dict[int, float]:
+) -> Dict[str, float]:
     """Calculates weight distribution across tiles for a vector using a set of tile centers.
 
     Args:

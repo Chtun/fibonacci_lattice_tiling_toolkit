@@ -30,7 +30,7 @@ Functions:
     calculate_spherical_triangle_area: Computes the area for a spherical triangle.
 """
 
-from typing import List, Tuple, Dict, Optional, Union
+from typing import List, Tuple, Dict, Union
 import numpy as np
 import pandas as pd
 from pathlib import Path
