@@ -15,6 +15,7 @@ Classes:
 from dataclasses import dataclass
 from typing import Union, Tuple, List
 import numpy as np
+import re
 
 
 class SpatialError(Exception):
@@ -206,6 +207,14 @@ class Vector:
                 lon=_lon,
                 lat=_lat
             )
+    
+    def from_string(vector_str: str):
+        match = re.match(r"Vector\(x=([\d\.\-e]+), y=([\d\.\-e]+), z=([\d\.\-e]+)\)", vector_str)
+        if match:
+            x, y, z = match.groups()
+            return Vector(float(x), float(y), float(z))
+        else:
+            raise ValueError(f"Invalid vector string format: {vector_str}")
 
     @classmethod
     def from_spherical(cls, lon: float, lat: float) -> 'Vector':
