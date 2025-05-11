@@ -28,7 +28,7 @@ The following installation and usage can be found formatted at the following Goo
 
 1. Clone the repository:
 ```bash
-git clone 
+git clone https://github.com/Chtun/fibonacci_lattice_tiling_toolkit.git
 cd fibonacci_lattice_tiling_toolkit
 ```
 
