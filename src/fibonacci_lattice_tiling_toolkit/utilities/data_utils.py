@@ -1007,9 +1007,13 @@ def get_tile_corners(tile_boundaries: List[List[Vector]]) -> List[Vector]:
             tile_corners_dict[P2_rounded] = False
     
     # Check and make sure that each corner has exactly two adjacent corners. If not, remove then and notify the user.
-    for corner in edge_dict:
+    for corner in list(edge_dict.keys()):
         # If a corner has less than 2 edges, then remove it and all other references to it.
-        if len(edge_dict[corner]) < 2:
+        if (corner not in edge_dict):
+          continue
+        elif(len(edge_dict[corner]) == 0):
+          del edge_dict[corner]
+        elif len(edge_dict[corner]) < 2:
             neighbor = edge_dict[corner][0]
 
             print(f"Corner {corner} was found with only one neighbor, and is being removed (due to it being an extraneous edge).")
