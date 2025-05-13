@@ -215,12 +215,13 @@ def compute_heatmap(
     for tile_center_key in tile_centers.keys():
         tile_weights[tile_center_key] = 0.0
 
-    tile_weights_list = calculate_tile_weights_by_index(
-        vector=vectors,
-        tile_centers=tile_centers,
-        config=config)
+    for vector in vectors:
+        tile_weights_list = calculate_tile_weights_by_index(
+            vector=vector,
+            tile_centers=tile_centers,
+            config=config)
 
-    for tile_index, tile_weight in tile_weights_list.items():
-        tile_weights[tile_index] += tile_weight
+        for tile_index, tile_weight in tile_weights_list.items():
+            tile_weights[tile_index] += tile_weight
     
     return tile_weights
