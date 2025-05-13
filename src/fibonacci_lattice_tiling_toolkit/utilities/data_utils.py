@@ -616,7 +616,7 @@ def find_geodesic_distances_from_dict(
     
     return distances
 
-def ERP_distance(v1: Vector, v2: Vector) -> float:
+def find_ERP_distance(v1: Vector, v2: Vector) -> float:
     """Computes the distance in latitude and longitude (ERP), in radians, between two vectors.
     
     Args:
@@ -658,7 +658,7 @@ def find_ERP_distances_from_dict(
         np.ndarray: Array of [tile_key, ERP_distance] pairs as a structured array.
     """
     distances = np.array([
-        (key, ERP_distance(vector, center))
+        (key, find_ERP_distance(vector, center))
         for key, center in tile_centers.items()
     ], dtype=[("tile_key", "U50"), ("geodesic_distance", "f8")])
 
