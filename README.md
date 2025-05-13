@@ -69,14 +69,14 @@ save_fb_tiling_visualization_image(
     )
 
 save_fb_tiling_visualization_video(
-    30,
+    29,
     output_dir=output_dir,
     horizontal_pan=True,
     vertical_pan=True
     )
 
 save_fb_tiling_visualization_glb(
-    30,
+    29,
     output_dir=output_dir
     )
 ```
@@ -97,11 +97,11 @@ output_dir = Path("./output")
 output_dir.mkdir(parents=True, exist_ok=True)
 
 save_fb_tiling_visualization_image(
-    29,
+    647,
     output_dir=output_dir)
 
 save_fb_tiling_visualization_glb(
-    49,
+    647,
     output_dir=output_dir)
 ```
 
