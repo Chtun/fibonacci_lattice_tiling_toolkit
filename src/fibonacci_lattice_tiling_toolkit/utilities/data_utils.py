@@ -14,7 +14,7 @@ Functions:
     vector_angle_distance: Finds the angle between two Vectors.
     find_geodesic_distances: Finds the geodesic distance between a single Vector and a list of other Vectors.
     find_geodesic_distances_from_dict: Finds the geodesic distances between a single Vector and a dictionary of other Vectors.
-    ERP_distance: Finds the Euclidean distance on an ERP between two Vectors.
+    find_ERP_distance: Finds the Euclidean distance on an ERP between two Vectors.
     find_ERP_distances_from_dict: Finds the ERP distances between a single Vector and a dictionary of other Vectors.
 
     normalize_to_pixel: Converts normalized coordinates to pixel coordinates.

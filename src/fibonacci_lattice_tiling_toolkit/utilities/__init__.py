@@ -12,7 +12,7 @@ from .data_utils import (
     vector_angle_distance,
     find_geodesic_distances,
     find_geodesic_distances_from_dict,
-    ERP_distance,
+    find_ERP_distance,
     find_ERP_distances_from_dict,
 
 
@@ -46,6 +46,7 @@ from .data_utils import (
 from .heatmap_utils import (
     find_nearest_tile,
     calculate_tile_weights,
+    compute_heatmap,
     HeatmapConfig,
     HeatFunction,
     HeatFunctionType,
@@ -73,7 +74,7 @@ __all__ = [
     'vector_angle_distance',
     'find_geodesic_distances',
     'find_geodesic_distances_from_dict',
-    'ERP_distance',
+    'find_ERP_distance',
     'find_ERP_distances_from_dict',
     'normalize_to_pixel',
     'pixel_to_spherical',
@@ -98,8 +99,7 @@ __all__ = [
     # Heatmap utilities
     'find_nearest_tile',
     'calculate_tile_weights',
-    'calculate_naive_tile_weights',
-    'find_naive_tile_index',
+    'compute_heatmap'
     'HeatmapConfig',
     'HeatFunction',
     'HeatFunctionType',
