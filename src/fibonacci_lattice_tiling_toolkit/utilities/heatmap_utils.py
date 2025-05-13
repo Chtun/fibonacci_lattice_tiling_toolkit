@@ -126,8 +126,12 @@ def calculate_tile_weights(
     weights = {}
     max_distance = np.radians(config.fov_angle / 2.0)
     
-    # Calculate geodesic distances
-    distances = find_geodesic_distances(vector, tile_centers)
+    # Calculate geodesic or ERP distances based on config
+    if not config.use_erroneous_ERP_distance:
+      distances = find_geodesic_distances_from_dict(vector, tile_centers)
+    else:
+      distances = find_ERP_distances_from_dict(vector, tile_centers)
+
     distances = sorted(distances, key=lambda x: x[1])
     
     if config.heat_function.heat_function_type != HeatFunctionType.NEAREST_NEIGHBOR:
@@ -165,12 +169,11 @@ def calculate_tile_weights_by_index(
     weights = {}
     max_distance = np.radians(config.fov_angle / 2.0)
 
-    # Calculate geodesic distances
+    # Calculate geodesic or ERP distances based on config
     if not config.use_erroneous_ERP_distance:
       distances = find_geodesic_distances_from_dict(vector, tile_centers)
     else:
       distances = find_ERP_distances_from_dict(vector, tile_centers)
-    
     
     distances = sorted(distances, key=lambda x: x[1])
 
