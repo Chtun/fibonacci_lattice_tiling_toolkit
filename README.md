@@ -240,7 +240,7 @@ save_tiling_visualization_with_weights(
 
 ### Area Calculation
 
-To calculate the areas of an arbitrary tiling, here is an example:
+To calculate the areas of an arbitrary tiling, here is an example (see Colab Notebook for full comparison scripts and visualization):
 ```python
 from fibonacci_lattice_tiling_toolkit.utilities.data_utils import compute_FB_tile_areas, compute_ERP_tile_areas, compute_CMP_tile_areas, get_FB_tile_boundaries
 from fibonacci_lattice_tiling_toolkit.data_types import Vector
