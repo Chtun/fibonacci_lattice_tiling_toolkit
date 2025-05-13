@@ -164,7 +164,7 @@ def calculate_tile_weights_by_index(
         config: Heatmap calculation configuration.
 
     Returns:
-        Dict[int, float]: Dictionary mapping tile index to weights.
+        Dict[str, float]: Dictionary mapping tile index to weights.
     """
     weights = {}
     max_distance = np.radians(config.fov_angle / 2.0)
@@ -193,3 +193,34 @@ def calculate_tile_weights_by_index(
         weights[nearest_tile_idx_str] = 1.0
 
     return weights
+
+def compute_heatmap(
+    vectors: List[Vector],
+    tile_centers: Dict[str, Vector],
+    config: HeatmapConfig
+) -> Dict[str, float]:
+    """Calculates weight distribution across tiles for a set of vectors using a set of tile centers.
+
+    Args:
+        vectors: Input list of vectors.
+        tile_centers: List of tile center vectors.
+        config: Heatmap calculation configuration.
+
+    Returns:
+        Dict[str, float]: Dictionary mapping tile index to weights.
+    """
+
+    tile_weights = {}
+
+    for tile_center_key in tile_centers.keys():
+        tile_weights[tile_center_key] = 0.0
+
+    tile_weights_list = calculate_tile_weights_by_index(
+        vector=vectors,
+        tile_centers=tile_centers,
+        config=config)
+
+    for tile_index, tile_weight in tile_weights_list.items():
+        tile_weights[tile_index] += tile_weight
+    
+    return tile_weights

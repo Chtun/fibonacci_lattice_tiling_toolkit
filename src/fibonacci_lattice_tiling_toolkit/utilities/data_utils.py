@@ -660,7 +660,7 @@ def find_ERP_distances_from_dict(
     distances = np.array([
         (key, find_ERP_distance(vector, center))
         for key, center in tile_centers.items()
-    ], dtype=[("tile_key", "U50"), ("geodesic_distance", "f8")])
+    ], dtype=[("tile_key", "U50"), ("ERP_distance", "f8")])
 
     return distances
 
