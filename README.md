@@ -88,7 +88,7 @@ save_fb_tiling_visualization_glb(
 A basic way to generate tiling visualizations with default configurations:
 
 ```python
-from fibonacci_lattice_tiling_toolkit.utilities.visualization_utils import save_fb_tiling_visualization_image
+from fibonacci_lattice_tiling_toolkit.utilities.visualization_utils import save_fb_tiling_visualization_image, save_fb_tiling_visualization_glb
 from pathlib import Path
 
 
@@ -99,6 +99,10 @@ output_dir.mkdir(parents=True, exist_ok=True)
 save_fb_tiling_visualization_image(
     29,
     output_dir=output_dir)
+
+save_fb_tiling_visualization_glb(
+    49,
+    output_dir=output_dir)
 ```
 
 A basic way to generate heatmap visualizations on any data with default configurations:
@@ -106,25 +110,25 @@ A basic way to generate heatmap visualizations on any data with default configur
 ```python
 import os
 from pathlib import Path
-import random
 import math
 import csv
 
-from fibonacci_lattice_tiling_toolkit.utilities.visualization_utils import save_fb_tiling_visualization_video, spherical_interpolation, save_tiling_visualization_with_weights
-from fibonacci_lattice_tiling_toolkit.utilities.data_utils import generate_fibonacci_lattice, get_FB_tile_boundaries, get_ERP_tile_boundaries, get_CMP_tile_boundaries, get_CMP_tile_centers, Vector, vector_angle_distance, find_angular_distances
-from fibonacci_lattice_tiling_toolkit.utilities.heatmap_utils import HeatmapConfig, calculate_tile_weights, calculate_tile_weights_by_index
+from fibonacci_lattice_tiling_toolkit.utilities.visualization_utils import save_tiling_visualization_with_weights
+from fibonacci_lattice_tiling_toolkit.utilities.data_utils import generate_fibonacci_lattice, get_FB_tile_boundaries, get_ERP_tile_boundaries, get_CMP_tile_boundaries, get_CMP_tile_centers, Vector
+from fibonacci_lattice_tiling_toolkit.utilities.heatmap_utils import HeatmapConfig, compute_heatmap
 
 # Output directory
-output_dir = Path("./output")
+output_dir = Path("../output")
 output_dir.mkdir(parents=True, exist_ok=True)
 
 input_dir = Path("./data/Examples")
-input_file_name = "viewer_vectors-Test_Two_Clusters.csv"
+input_file_name = "viewer_vectors-Real_Data-Video_3-Time_57.70.csv"
 input_vector_file = os.path.join(input_dir, input_file_name)
 
-data_title = "Test_Two_Clusters"
+data_title = "Video_3-Time_57.70"
 
-viewer_vectors = {}
+viewer_vectors_dict = {}
+viewer_ERPs = {}
 
 with open(input_vector_file, 'r') as f:
     reader = csv.DictReader(f)
@@ -133,10 +137,16 @@ with open(input_vector_file, 'r') as f:
         x = float(row["x"])
         y = float(row["y"])
         z = float(row["z"])
-        viewer_vectors[key] = Vector(x, y, z)
+        viewer_vectors_dict[key] = Vector(x, y, z)
 
-# Heatmap config is defaulted, using Geodesic distance and Gaussian smoothing heat function.
-heatmap_config = HeatmapConfig()
+viewer_vectors = []
+for viewer_vector in viewer_vectors_dict.values():
+  if viewer_vector != None:
+    viewer_vectors.append(viewer_vector)
+
+heatmap_config = HeatmapConfig(
+    use_erroneous_ERP_distance=False
+)
 
 # Generate tiling heatmap for Fibonacci lattice tiling on sphere.
 
@@ -151,29 +161,75 @@ for i in range(len(tile_centers)):
 
 tile_centers = tile_centers_dict
 
-tile_weights = {}
-
-for tile_index in tile_centers:
-  tile_weights[tile_index] = 0.0
+tile_weights = compute_heatmap(
+    vectors=viewer_vectors,
+    tile_centers=tile_centers,
+    config=heatmap_config
+)
 
 for tile_index in list(tile_boundaries.keys()):
   tile_boundaries[str(tile_index)] = tile_boundaries[tile_index]
   del tile_boundaries[tile_index]
 
-for viewer in viewer_vectors.keys():
-  viewer_vector = viewer_vectors[viewer]
 
-  tile_weights_list = calculate_tile_weights_by_index(
-      vector=viewer_vector,
-      tile_centers=tile_centers,
-      config=heatmap_config)
+save_tiling_visualization_with_weights(
+    tile_boundaries=tile_boundaries,
+    tile_weights=tile_weights,
+    output_dir=output_dir,
+    output_prefix=output_prefix)
 
-  for tile_index in tile_weights_list.keys():
-    tile = tile_centers[tile_index]
-    tile_weight = tile_weights_list[tile_index]
+# Generate tiling heatmap for ERP on sphere.
 
-    tile_weights[tile_index] += tile_weight
+num_tiles_horizontal = 36
+num_tiles_vertical = 18
+tile_boundaries = get_ERP_tile_boundaries(num_tiles_horizontal=num_tiles_horizontal, num_tiles_vertical=num_tiles_vertical)
 
+output_prefix = f"ERP_({num_tiles_horizontal}x{num_tiles_vertical})_tiling-{data_title}-"
+
+lat_step = 180 / num_tiles_vertical  # Latitude step size
+lon_step = 360 / num_tiles_horizontal  # Longitude step size
+
+tile_centers = {}
+for tile_index in tile_boundaries.keys():
+  tile_index_y = tile_index.split("_")[0]
+  tile_index_x = tile_index.split("_")[1]
+
+  tile_index_x = int(tile_index_x)
+  tile_index_y = int(tile_index_y)
+
+  lon = -180 + lon_step * tile_index_x
+  lat = -90 + lat_step * tile_index_y
+
+  tile_centers[tile_index] = (Vector.from_spherical(lon=lon, lat=lat))
+
+tile_weights = compute_heatmap(
+    vectors=viewer_vectors,
+    tile_centers=tile_centers,
+    config=heatmap_config
+)
+
+save_tiling_visualization_with_weights(
+    tile_boundaries=tile_boundaries,
+    tile_weights=tile_weights,
+    output_dir=output_dir,
+    output_prefix=output_prefix)
+
+# Generate tiling heatmap for CMP on sphere.
+
+num_tiles_horizontal = 11
+num_tiles_vertical = 11
+
+tile_boundaries = get_CMP_tile_boundaries(num_tiles_horizontal=num_tiles_horizontal, num_tiles_vertical=num_tiles_vertical)
+
+tile_centers = get_CMP_tile_centers(num_tiles_horizontal=num_tiles_horizontal, num_tiles_vertical=num_tiles_vertical)
+
+output_prefix = f"CMP_({num_tiles_horizontal}x{num_tiles_vertical})_tiling-{data_title}-"
+
+tile_weights = compute_heatmap(
+    vectors=viewer_vectors,
+    tile_centers=tile_centers,
+    config=heatmap_config
+)
 
 save_tiling_visualization_with_weights(
     tile_boundaries=tile_boundaries,
@@ -259,7 +315,99 @@ for tile_count in tile_counts:
 
 ### Data Preprocessing
 
-To Preprocess data, here is an example:
+In order to preprocess the data provided in the github repo for different datasets:
+
+```python
+import csv
+from fibonacci_lattice_tiling_toolkit.utilities.data_utils import Vector
+import pandas as pd
+from pathlib import Path
+import os
+
+# Output directory
+output_dir = Path("../output")
+output_dir.mkdir(parents=True, exist_ok=True)
+
+# Input traces directory
+input_traces_dir = Path("./data/Afshin2019/Traces")
+
+
+video_trace_num = 3
+time_step = 57.70
+
+# Collect all .csv files ending in '26.csv'
+matching_csvs = [f for f in input_traces_dir.rglob("*.csv") if f.stem.endswith(f"_{str(video_trace_num)}")]
+
+# Print them out
+for csv_path in matching_csvs:
+  print(csv_path)
+
+print(len(matching_csvs))
+
+# Store matching rows
+matched_rows = []
+
+# Loop through each CSV
+for csv_path in matching_csvs:
+  try:
+    df = pd.read_csv(csv_path)
+
+    # Ensure there's at least one column
+    if df.shape[1] == 0:
+        continue
+
+    # Look for the first row where the first column is between 56.0 and 56.02
+    condition = (df.iloc[:, 0] >= time_step - 0.1) & (df.iloc[:, 0] <= time_step + 0.1)
+    matches = df[condition]
+
+    if not matches.empty:
+      first_match = matches.iloc[0].tolist()  # Convert row to list of values
+
+      first_match.append(csv_path.name.split("_")[0])
+
+      matched_rows.append(first_match)
+    else:
+      print(f"No matching rows found in {csv_path}")
+
+  except Exception as e:
+    print(f"Error reading {csv_path}: {e}")
+
+# Convert to DataFrame
+result_df = pd.DataFrame(matched_rows)
+
+viewer_vectors = {}
+viewer_ERPs = {}
+
+for row in matched_rows:
+  x = row[7]
+  y = row[5]
+  z = row[6]
+
+  viewer = row[8]
+
+  vector = Vector(x, y, z)
+  viewer_vectors[viewer] = vector
+
+output_suffix = f"Real_Data-Video_{video_trace_num}-Time_{time_step:.2f}"
+
+output_file = os.path.join(output_dir, f'viewer_vectors-{output_suffix}.csv')
+
+try:
+    with open(output_file, 'w', newline='') as f:
+        writer = csv.writer(f)
+
+        # Header
+        writer.writerow(["key", "x", "y", "z"])
+
+        # One row per vector
+        for i in viewer_vectors:
+            vec = viewer_vectors[i]
+            writer.writerow([i, vec.x, vec.y, vec.z])
+
+    print(f"Viewer vectors saved to: {output_file}")
+except Exception as e:
+    print(f"Error saving viewer vectors: {e}")
+```
 
 ```python
 import math
@@ -332,6 +480,54 @@ output_dir = Path("./output")
 output_dir.mkdir(parents=True, exist_ok=True)
 
 output_file = os.path.join(output_dir, f'viewer_vectors-Test_Two_Clusters.csv')
+
+try:
+    with open(output_file, 'w', newline='') as f:
+        writer = csv.writer(f)
+
+        # Header
+        writer.writerow(["key", "x", "y", "z"])
+
+        # One row per vector
+        for i in viewer_vectors:
+            vec = viewer_vectors[i]
+            writer.writerow([i, vec.x, vec.y, vec.z])
+
+    print(f"Viewer vectors saved to: {output_file}")
+except Exception as e:
+    print(f"Error saving viewer vectors: {e}")
+```
+
+```python
+import math
+import csv
+from fibonacci_lattice_tiling_toolkit.utilities.data_utils import Vector
+
+viewer_vectors = {}
+
+lon_dist = 5
+num_viewers = 7
+
+
+rhino_lat = 0
+rhino_viewer_dist = lon_dist
+for i in range(num_viewers):
+  viewer_lon = rhino_viewer_dist * i - (float(num_viewers - 1) / 2.0 * rhino_viewer_dist)
+  viewer_vectors[i] = Vector.from_spherical(lat=rhino_lat, lon=viewer_lon)
+
+
+birds_lat = 75.5
+birds_viewer_dist = 2 * lon_dist
+for index in range(7, 14):
+  i = index - 7
+  viewer_lon = birds_viewer_dist * i - ((float(num_viewers - 1) / 2.0) * birds_viewer_dist)
+  viewer_vectors[index] = Vector.from_spherical(lat=birds_lat, lon=viewer_lon)
+
+# Output directory
+output_dir = Path("../output")
+output_dir.mkdir(parents=True, exist_ok=True)
+
+output_file = os.path.join(output_dir, f'viewer_vectors-Test_Rhino_Birds.csv')
 
 try:
     with open(output_file, 'w', newline='') as f:
