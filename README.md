@@ -69,14 +69,14 @@ save_fb_tiling_visualization_image(
     )
 
 save_fb_tiling_visualization_video(
-    30,
+    29,
     output_dir=output_dir,
     horizontal_pan=True,
     vertical_pan=True
     )
 
 save_fb_tiling_visualization_glb(
-    30,
+    29,
     output_dir=output_dir
     )
 ```
@@ -97,11 +97,11 @@ output_dir = Path("./output")
 output_dir.mkdir(parents=True, exist_ok=True)
 
 save_fb_tiling_visualization_image(
-    29,
+    647,
     output_dir=output_dir)
 
 save_fb_tiling_visualization_glb(
-    49,
+    647,
     output_dir=output_dir)
 ```
 
@@ -240,7 +240,7 @@ save_tiling_visualization_with_weights(
 
 ### Area Calculation
 
-To calculate the areas of an arbitrary tiling, here is an example:
+To calculate the areas of an arbitrary tiling, here is an example (see Colab Notebook for full comparison scripts and visualization):
 ```python
 from fibonacci_lattice_tiling_toolkit.utilities.data_utils import compute_FB_tile_areas, compute_ERP_tile_areas, compute_CMP_tile_areas, get_FB_tile_boundaries
 from fibonacci_lattice_tiling_toolkit.data_types import Vector
