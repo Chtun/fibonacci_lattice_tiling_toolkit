@@ -14,7 +14,7 @@ from enum import Enum
 from dataclasses import dataclass, field
 import math
 
-from fibonacci_lattice_tiling_toolkit import Vector, RadialPoint, ValidationError
+from fibonacci_lattice_tiling_toolkit import Vector, ValidationError
 from fibonacci_lattice_tiling_toolkit.utilities.data_utils import find_geodesic_distances, find_geodesic_distances_from_dict, find_ERP_distances_from_dict
 
 

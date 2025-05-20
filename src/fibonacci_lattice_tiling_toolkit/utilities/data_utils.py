@@ -35,7 +35,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 
-from fibonacci_lattice_tiling_toolkit import Point, RadialPoint, Vector, ValidationError
+from fibonacci_lattice_tiling_toolkit import Pixel, RadialPoint, Vector, ValidationError
 
 def generate_fibonacci_lattice(num_points: int) -> List[Vector]:
     """Generates Fibonacci lattice points on a sphere.
@@ -702,11 +702,11 @@ def normalize_to_pixel(normalized: np.ndarray, dimension: int) -> np.ndarray:
     return (normalized * dimension).astype(int)
 
 
-def pixel_to_spherical(point: Point, video_width: int, video_height: int) -> RadialPoint:
+def pixel_to_spherical(point: Pixel, video_width: int, video_height: int) -> RadialPoint:
     """Converts pixel coordinates to spherical coordinates.
     
     Args:
-        point (Point): Point in pixel coordinates.
+        point (Pixel): Pixel in pixel coordinates.
         video_width (int): Width of the video in pixels.
         video_height (int): Height of the video in pixels.
     
@@ -766,7 +766,7 @@ def process_viewport_data(
         # Convert to spherical coordinates
         spherical_coords = data.apply(
             lambda row: pixel_to_spherical(
-                Point(row["pixel_x"], row["pixel_y"]),
+                Pixel(row["pixel_x"], row["pixel_y"]),
                 video_width,
                 video_height
             ),
@@ -792,7 +792,7 @@ def format_trajectory_data(
         trajectory_data: List of tuples containing (identifier, data) pairs.
     
     Returns:
-        Tuple[pd.DataFrame, pd.DataFrame]: Points and vectors at each time step.
+        Tuple[pd.DataFrame, pd.DataFrame]: Radial Points and Vectors at each time step.
     
     Raises:
         ValidationError: If data format is invalid.

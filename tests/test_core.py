@@ -1,14 +1,20 @@
 """Tests for spherical tiling and heatmap visualizations."""
 
-from fibonacci_lattice_tiling_toolkit.data_types import Point, RadialPoint, Vector
+from fibonacci_lattice_tiling_toolkit.data_types import Point, Pixel, RadialPoint, Vector
 from fibonacci_lattice_tiling_toolkit.utilities.data_utils import get_FB_tile_boundaries, get_ERP_tile_boundaries, get_CMP_tile_boundaries, generate_fibonacci_lattice, get_CMP_tile_centers
 from fibonacci_lattice_tiling_toolkit.utilities.heatmap_utils import HeatmapConfig, HeatFunctionType, GaussianHeatFunction, ExponentialHeatFunction, UniformHeatFunction, NearestNeighborHeatFunction, calculate_tile_weights
 
 def test_point_creation():
     """Test Point class creation."""
-    point = Point(pixel_x=100, pixel_y=200)
-    assert point.pixel_x == 100
-    assert point.pixel_y == 200
+    point = Point(x=200, y=-100)
+    assert point.x == 200
+    assert point.y == -100
+
+def test_pixel_creation():
+    """Test Pixel class creation."""
+    pixel = Pixel(pixel_x=100, pixel_y=200)
+    assert pixel.pixel_x == 100
+    assert pixel.pixel_y == 200
 
 def test_radial_point_creation():
     """Test RadialPoint class creation."""

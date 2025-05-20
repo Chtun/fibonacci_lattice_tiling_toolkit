@@ -42,6 +42,34 @@ class Point:
     Raises:
         ValidationError: If pixel coordinates are negative.
     """
+    x: int
+    y: int
+
+    def __post_init__(self) -> None:
+        """Validates point coordinates after initialization."""
+    
+    def as_tuple(self) -> Tuple[int, int]:
+        """Returns the point coordinates as a tuple.
+        
+        Returns:
+            Tuple[int, int]: A tuple of (x, y) coordinates.
+        """
+        return (self.x, self.y)
+
+@dataclass(frozen=True)
+class Pixel:
+    """Represents a point in pixel coordinates.
+    
+    This class represents a point in a 2D pixel coordinate system, typically
+    used for viewport center trajectories in video frames.
+    
+    Attributes:
+        pixel_x (int): X coordinate in pixels.
+        pixel_y (int): Y coordinate in pixels.
+    
+    Raises:
+        ValidationError: If pixel coordinates are negative.
+    """
     pixel_x: int
     pixel_y: int
 
@@ -57,7 +85,6 @@ class Point:
             Tuple[int, int]: A tuple of (x, y) coordinates.
         """
         return (self.pixel_x, self.pixel_y)
-
 
 @dataclass(frozen=True)
 class RadialPoint:
