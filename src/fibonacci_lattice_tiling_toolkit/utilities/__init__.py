@@ -9,10 +9,12 @@ from .data_utils import (
     get_FB_tile_boundaries,
     get_ERP_tile_boundaries,
     get_CMP_tile_boundaries,
+    get_EAC_tile_boundaries,
     vector_angle_distance,
     find_geodesic_distances,
     find_geodesic_distances_from_dict,
     find_ERP_distance,
+    find_ERP_distances,
     find_ERP_distances_from_dict,
 
 
@@ -41,6 +43,7 @@ from .data_utils import (
     compute_FB_tile_areas,
     compute_ERP_tile_areas,
     compute_CMP_tile_areas,
+    compute_EAC_tile_areas,
 )
 
 from .heatmap_utils import (
@@ -71,10 +74,12 @@ __all__ = [
     'get_FB_tile_boundaries',
     'get_ERP_tile_boundaries',
     'get_CMP_tile_boundaries',
+    'get_EAC_tile_boundaries',
     'vector_angle_distance',
     'find_geodesic_distances',
     'find_geodesic_distances_from_dict',
     'find_ERP_distance',
+    'find_ERP_distances',
     'find_ERP_distances_from_dict',
     'normalize_to_pixel',
     'pixel_to_spherical',
@@ -95,6 +100,7 @@ __all__ = [
     'compute_FB_tile_areas',
     'compute_ERP_tile_areas',
     'compute_CMP_tile_areas',
+    'compute_EAC_tile_areas',
     
     # Heatmap utilities
     'find_nearest_tile',

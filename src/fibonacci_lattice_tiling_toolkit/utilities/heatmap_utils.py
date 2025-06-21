@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 import math
 
 from fibonacci_lattice_tiling_toolkit import Vector, ValidationError
-from fibonacci_lattice_tiling_toolkit.utilities.data_utils import find_geodesic_distances, find_geodesic_distances_from_dict, find_ERP_distances_from_dict
+from fibonacci_lattice_tiling_toolkit.utilities.data_utils import find_geodesic_distances, find_ERP_distances, find_geodesic_distances_from_dict, find_ERP_distances_from_dict
 
 
 class HeatFunctionType(Enum):
@@ -128,9 +128,9 @@ def calculate_tile_weights(
     
     # Calculate geodesic or ERP distances based on config
     if not config.use_erroneous_ERP_distance:
-      distances = find_geodesic_distances_from_dict(vector, tile_centers)
+      distances = find_geodesic_distances(vector, tile_centers)
     else:
-      distances = find_ERP_distances_from_dict(vector, tile_centers)
+      distances = find_ERP_distances(vector, tile_centers)
 
     distances = sorted(distances, key=lambda x: x[1])
     

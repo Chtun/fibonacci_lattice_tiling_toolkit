@@ -9,6 +9,7 @@ Functions:
     get_FB_tile_boundaries: Generates the tiles (their boundaries) for Fibonacci-lattice Voronoi tiling.
     get_ERP_tile_boundaries: Generates the tiles (their boundaries) for ERP tiling.
     get_CMP_tile_boundaries: Generates the tiles (their boundaries) for CMP tiling.
+    get_EAC_tile_boundaries: GEnerates the tiles (their boundaries) for EAC tiling.
     get_CMP_tile_centers: Generates the tile centers for CMP tiling.
 
     vector_angle_distance: Finds the angle between two Vectors.
@@ -26,6 +27,7 @@ Functions:
     compute_FB_tile_areas: Computes the area for each FB tile.
     compute_ERP_tile_areas: Computes the area for each ERP tile.
     compute_CMP_tile_areas: Computes the area for each CMP tile.
+    compute_EAC_tile_areas: Computes the area for each EAC tile.
     compute_spherical_polygon_area: Computes the area for a convex tile.
     calculate_spherical_triangle_area: Computes the area for a spherical triangle.
 """
@@ -412,6 +414,246 @@ def get_CMP_tile_boundaries(num_tiles_horizontal: int, num_tiles_vertical: int, 
 
     return CMP_tile_boundaries
 
+def get_EAC_tile_boundaries(num_tiles_horizontal: int, num_tiles_vertical: int, radius: float = 1.0) -> Dict[str, List[List[Vector]]]:
+    """
+    Generates the tiles (their boundaries) for Equi-Angular Cubemap (EAC) tiling.
+    Total number of tiles will be 6 * num_tiles_horizontal * num_tiles_vertical.
+
+    Args:
+        num_tiles_horizontal: The number of horizontal spatial bins to tile a face of the EAC cube with.
+        num_tiles_vertical: The number of vertical spatial bins to tile a face of the EAC cube with.
+        radius: The radius of the sphere/cube.
+
+    Returns:
+        Dict: A dictionary where each tile index "face_FACE-i_j" has a list of tile boundaries, where FACE denotes
+              the fixed axis and its value (e.g. "Z=1" for +Z face), and i is horizontal index and j is vertical index.
+
+    Raises:
+        ValidationError: Error if tile count is less than 1.
+    """
+
+    if num_tiles_horizontal <= 0 or num_tiles_vertical <= 0:
+        raise ValidationError("Number of tiles horizontal and vertical must be positive!")
+
+    eac_tile_boundaries = {}
+
+    # Calculate step sizes in the *linear* [-1, 1] range for the face.
+    # These are the input coordinates to the EAC transformation function.
+    linear_step_x = 2.0 / num_tiles_horizontal
+    linear_step_y = 2.0 / num_tiles_vertical
+
+    # This function maps a linear coordinate (from -1 to 1) on a cube face
+    # to an equi-angular coordinate (via tangent).
+    def linear_to_eac_coord(linear_val):
+      # The factor math.pi / 4 ensures that the -1 to 1 linear range maps
+      # correctly to the angular range for an equi-angular projection (-pi/4 to pi/4).
+      return math.tan(linear_val * math.pi / 4.0)
+
+    # Do the XY plane with Z = 1 (+Z Face / Front)
+    face_key = "Z=1"
+    for i in range(num_tiles_horizontal):
+      for j in range(num_tiles_vertical):
+        index_key = f"face_{face_key}-{i}_{j}"
+
+        # Calculate linear coordinates for the corners of the tile on the cube face
+        # These range from -1.0 to 1.0 across the face.
+        lx1 = -1.0 + i * linear_step_x
+        ly1 = -1.0 + j * linear_step_y
+        lx2 = -1.0 + i * linear_step_x
+        ly2 = -1.0 + (j + 1) * linear_step_y
+        lx3 = -1.0 + (i + 1) * linear_step_x
+        ly3 = -1.0 + (j + 1) * linear_step_y
+        lx4 = -1.0 + (i + 1) * linear_step_x
+        ly4 = -1.0 + j * linear_step_y
+
+        # Apply the EAC transformation
+        tx1 = linear_to_eac_coord(lx1)
+        ty1 = linear_to_eac_coord(ly1)
+        tx2 = linear_to_eac_coord(lx2)
+        ty2 = linear_to_eac_coord(ly2)
+        tx3 = linear_to_eac_coord(lx3)
+        ty3 = linear_to_eac_coord(ly3)
+        tx4 = linear_to_eac_coord(lx4)
+        ty4 = linear_to_eac_coord(ly4)
+        
+        # Construct the 3D Vector points for the +Z face
+        p1 = Vector(tx1 * radius, ty1 * radius, radius)
+        p2 = Vector(tx2 * radius, ty2 * radius, radius)
+        p3 = Vector(tx3 * radius, ty3 * radius, radius)
+        p4 = Vector(tx4 * radius, ty4 * radius, radius)
+
+        eac_tile_boundaries[index_key] = [[p1, p2], [p1, p4], [p2, p3], [p3, p4]]
+
+
+    # Do the XY plane with Z = -1 (-Z Face / Back)
+    face_key = "Z=-1"
+    for i in range(num_tiles_horizontal):
+      for j in range(num_tiles_vertical):
+        index_key = f"face_{face_key}-{i}_{j}"
+
+        lx1 = -1.0 + i * linear_step_x
+        ly1 = -1.0 + j * linear_step_y
+        lx2 = -1.0 + i * linear_step_x
+        ly2 = -1.0 + (j + 1) * linear_step_y
+        lx3 = -1.0 + (i + 1) * linear_step_x
+        ly3 = -1.0 + (j + 1) * linear_step_y
+        lx4 = -1.0 + (i + 1) * linear_step_x
+        ly4 = -1.0 + j * linear_step_y
+
+        tx1 = linear_to_eac_coord(lx1)
+        ty1 = linear_to_eac_coord(ly1)
+        tx2 = linear_to_eac_coord(lx2)
+        ty2 = linear_to_eac_coord(ly2)
+        tx3 = linear_to_eac_coord(lx3)
+        ty3 = linear_to_eac_coord(ly3)
+        tx4 = linear_to_eac_coord(lx4)
+        ty4 = linear_to_eac_coord(ly4)
+        
+        # Construct the 3D Vector points for the -Z face (X inverted for consistency)
+        p1 = Vector(-tx1 * radius, ty1 * radius, -radius)
+        p2 = Vector(-tx2 * radius, ty2 * radius, -radius)
+        p3 = Vector(-tx3 * radius, ty3 * radius, -radius)
+        p4 = Vector(-tx4 * radius, ty4 * radius, -radius)
+
+        eac_tile_boundaries[index_key] = [[p1, p2], [p1, p4], [p2, p3], [p3, p4]]
+
+    # Do the XZ plane with Y = 1 (+Y Face / Top)
+    face_key = "Y=1"
+    for i in range(num_tiles_horizontal):
+      for j in range(num_tiles_vertical):
+        index_key = f"face_{face_key}-{i}_{j}"
+
+        lx1 = -1.0 + i * linear_step_x
+        ly1 = -1.0 + j * linear_step_y
+        lx2 = -1.0 + i * linear_step_x
+        ly2 = -1.0 + (j + 1) * linear_step_y
+        lx3 = -1.0 + (i + 1) * linear_step_x
+        ly3 = -1.0 + (j + 1) * linear_step_y
+        lx4 = -1.0 + (i + 1) * linear_step_x
+        ly4 = -1.0 + j * linear_step_y
+
+        tx1 = linear_to_eac_coord(lx1)
+        ty1 = linear_to_eac_coord(ly1)
+        tx2 = linear_to_eac_coord(lx2)
+        ty2 = linear_to_eac_coord(ly2)
+        tx3 = linear_to_eac_coord(lx3)
+        ty3 = linear_to_eac_coord(ly3)
+        tx4 = linear_to_eac_coord(lx4)
+        ty4 = linear_to_eac_coord(ly4)
+        
+        # Construct the 3D Vector points for the +Y face
+        # Here, X is tx, Y is radius, Z is ty
+        p1 = Vector(tx1 * radius, radius, ty1 * radius)
+        p2 = Vector(tx2 * radius, radius, ty2 * radius)
+        p3 = Vector(tx3 * radius, radius, ty3 * radius)
+        p4 = Vector(tx4 * radius, radius, ty4 * radius)
+
+        eac_tile_boundaries[index_key] = [[p1, p2], [p1, p4], [p2, p3], [p3, p4]]
+
+    # Do the XZ plane with Y = -1 (-Y Face / Bottom)
+    face_key = "Y=-1"
+    for i in range(num_tiles_horizontal):
+      for j in range(num_tiles_vertical):
+        index_key = f"face_{face_key}-{i}_{j}"
+
+        lx1 = -1.0 + i * linear_step_x
+        ly1 = -1.0 + j * linear_step_y
+        lx2 = -1.0 + i * linear_step_x
+        ly2 = -1.0 + (j + 1) * linear_step_y
+        lx3 = -1.0 + (i + 1) * linear_step_x
+        ly3 = -1.0 + (j + 1) * linear_step_y
+        lx4 = -1.0 + (i + 1) * linear_step_x
+        ly4 = -1.0 + j * linear_step_y
+
+        tx1 = linear_to_eac_coord(lx1)
+        ty1 = linear_to_eac_coord(ly1)
+        tx2 = linear_to_eac_coord(lx2)
+        ty2 = linear_to_eac_coord(ly2)
+        tx3 = linear_to_eac_coord(lx3)
+        ty3 = linear_to_eac_coord(ly3)
+        tx4 = linear_to_eac_coord(lx4)
+        ty4 = linear_to_eac_coord(ly4)
+        
+        # Construct the 3D Vector points for the -Y face (Z inverted for consistency)
+        # Here, X is tx, Y is -radius, Z is -ty
+        p1 = Vector(tx1 * radius, -radius, -ty1 * radius)
+        p2 = Vector(tx2 * radius, -radius, -ty2 * radius)
+        p3 = Vector(tx3 * radius, -radius, -ty3 * radius)
+        p4 = Vector(tx4 * radius, -radius, -ty4 * radius)
+
+        eac_tile_boundaries[index_key] = [[p1, p2], [p1, p4], [p2, p3], [p3, p4]]
+
+    # Do the YZ plane with X = 1 (+X Face / Right)
+    face_key = "X=1"
+    for i in range(num_tiles_horizontal):
+      for j in range(num_tiles_vertical):
+        index_key = f"face_{face_key}-{i}_{j}"
+
+        lx1 = -1.0 + i * linear_step_x
+        ly1 = -1.0 + j * linear_step_y
+        lx2 = -1.0 + i * linear_step_x
+        ly2 = -1.0 + (j + 1) * linear_step_y
+        lx3 = -1.0 + (i + 1) * linear_step_x
+        ly3 = -1.0 + (j + 1) * linear_step_y
+        lx4 = -1.0 + (i + 1) * linear_step_x
+        ly4 = -1.0 + j * linear_step_y
+
+        tx1 = linear_to_eac_coord(lx1)
+        ty1 = linear_to_eac_coord(ly1)
+        tx2 = linear_to_eac_coord(lx2)
+        ty2 = linear_to_eac_coord(ly2)
+        tx3 = linear_to_eac_coord(lx3)
+        ty3 = linear_to_eac_coord(ly3)
+        tx4 = linear_to_eac_coord(lx4)
+        ty4 = linear_to_eac_coord(ly4)
+        
+        # Construct the 3D Vector points for the +X face
+        # Here, X is radius, Y is -ty, Z is tx
+        # This mapping (Y=-ty, Z=tx) is common for right face cubemap unwrapping to match panorama flow.
+        p1 = Vector(radius, -ty1 * radius, tx1 * radius)
+        p2 = Vector(radius, -ty2 * radius, tx2 * radius)
+        p3 = Vector(radius, -ty3 * radius, tx3 * radius)
+        p4 = Vector(radius, -ty4 * radius, tx4 * radius)
+
+        eac_tile_boundaries[index_key] = [[p1, p2], [p1, p4], [p2, p3], [p3, p4]]
+
+    # Do the YZ plane with X = -1 (-X Face / Left)
+    face_key = "X=-1"
+    for i in range(num_tiles_horizontal):
+      for j in range(num_tiles_vertical):
+        index_key = f"face_{face_key}-{i}_{j}"
+
+        lx1 = -1.0 + i * linear_step_x
+        ly1 = -1.0 + j * linear_step_y
+        lx2 = -1.0 + i * linear_step_x
+        ly2 = -1.0 + (j + 1) * linear_step_y
+        lx3 = -1.0 + (i + 1) * linear_step_x
+        ly3 = -1.0 + (j + 1) * linear_step_y
+        lx4 = -1.0 + (i + 1) * linear_step_x
+        ly4 = -1.0 + j * linear_step_y
+
+        tx1 = linear_to_eac_coord(lx1)
+        ty1 = linear_to_eac_coord(ly1)
+        tx2 = linear_to_eac_coord(lx2)
+        ty2 = linear_to_eac_coord(ly2)
+        tx3 = linear_to_eac_coord(lx3)
+        ty3 = linear_to_eac_coord(ly3)
+        tx4 = linear_to_eac_coord(lx4)
+        ty4 = linear_to_eac_coord(ly4)
+        
+        # Construct the 3D Vector points for the -X face
+        # Here, X is -radius, Y is ty, Z is tx
+        # This mapping (Y=ty, Z=tx) is common for left face cubemap unwrapping to match panorama flow.
+        p1 = Vector(-radius, ty1 * radius, tx1 * radius)
+        p2 = Vector(-radius, ty2 * radius, tx2 * radius)
+        p3 = Vector(-radius, ty3 * radius, tx3 * radius)
+        p4 = Vector(-radius, ty4 * radius, tx4 * radius)
+
+        eac_tile_boundaries[index_key] = [[p1, p2], [p1, p4], [p2, p3], [p3, p4]]
+
+
+    return eac_tile_boundaries
+
 def get_CMP_tile_centers(num_tiles_horizontal: int, num_tiles_vertical: int, radius: float = 1.0) -> Dict[str, Vector]:
     """
     Computes the center points of CMP tiles. Each tile center is the average of the 4 corners of the tile.
@@ -642,6 +884,25 @@ def find_ERP_distance(v1: Vector, v2: Vector) -> float:
         
     except Exception as e:
         raise ValidationError(f"Error calculating ERP distance: {str(e)}")
+
+def find_ERP_distances(
+    vector: Vector,
+    vectors: List[Vector]
+) -> np.ndarray:
+    """Finds ERP distances between a single Vector and a list of Vectors.
+    
+    Args:
+        vector: Reference vector.
+        vectors: List of Vectors.
+    
+    Returns:
+        np.ndarray: Array of [tile_index, ERP_distance] pairs.
+    """
+    distances = np.array([
+        [int(i), find_ERP_distance(vector, center)]
+        for i, center in enumerate(vectors)
+    ])
+    return distances
 
 def find_ERP_distances_from_dict(
   vector: Vector,
@@ -1258,3 +1519,38 @@ def compute_CMP_tile_areas(num_tiles_horizontal: int, num_tiles_vertical: int, r
         fraction_of_sphere_dict[tile_boundaries_index] = fraction_of_sphere
 
     return tile_area_dict, fraction_of_sphere_dict
+
+def compute_EAC_tile_areas(num_tiles_horizontal: int, num_tiles_vertical: int, radius: float = 1.0) -> Tuple[Dict[str, float], Dict[str, float]]:
+  """
+  Compute the fraction of the sphere each tile occupies and the tile areas for EAC tiling.
+  Total number of tiles will be 6 * num_tiles_horizontal * num_tiles_vertical.
+
+  Args:
+      tile_count (int): Number of tiles.
+      num_tiles_horizontal: The number of horizontal spatial bins to tile a face of the CMP cube with.
+      num_tiles_vertical: The number of vertical spatial bins to tile a face of the CMP cube with.
+      radius: the radius of the circle.
+
+  Returns:
+      tuple: (fraction_of_sphere_dict, tile_area_dict)
+
+  Raises:
+      ValueError: If either num_tiles_horizontal or num_tiles_vertical is not a positive integer.
+  """
+  if num_tiles_horizontal <= 0 or num_tiles_vertical <= 0:
+      raise ValidationError("Number of tiles horizontal and vertical must be positive!")
+
+  tile_boundaries_dict = get_EAC_tile_boundaries(num_tiles_horizontal, num_tiles_vertical, radius)
+
+  fraction_of_sphere_dict = {}
+  tile_area_dict = {}
+  total_sphere_area = 4 * radius * radius * np.pi
+
+  for tile_boundaries_index, tile_boundaries in tile_boundaries_dict.items():
+      tile_area = compute_spherical_polygon_area(tile_boundaries)
+      tile_area_dict[tile_boundaries_index] = tile_area
+
+      fraction_of_sphere = tile_area / total_sphere_area
+      fraction_of_sphere_dict[tile_boundaries_index] = fraction_of_sphere
+
+  return tile_area_dict, fraction_of_sphere_dict
