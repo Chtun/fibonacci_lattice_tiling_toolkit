@@ -36,6 +36,7 @@ from typing import List, Tuple, Dict, Union
 import numpy as np
 import pandas as pd
 from pathlib import Path
+import math
 
 from fibonacci_lattice_tiling_toolkit import Pixel, RadialPoint, Vector, ValidationError
 
