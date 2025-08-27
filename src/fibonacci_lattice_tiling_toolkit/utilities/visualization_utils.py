@@ -29,6 +29,7 @@ Functions:
 """
 
 import os
+import sys
 import logging
 from typing import Dict, List, Tuple, Optional, Any
 import numpy as np
@@ -128,7 +129,9 @@ def save_fb_tiling_visualization_image(
         output_dir: Path,
         camera_position: Tuple[float, float, float]=(0, 0, 5),
         camera_up: Tuple[float, float, float]= (0, 1, 0),
-        camera_focal_point: Tuple[float, float, float] = (0,0,0)
+        camera_focal_point: Tuple[float, float, float] = (0,0,0),
+        tile_center_size: float = 0.03,
+        include_indices: bool = False,
         ):
     """Saves a video of the tiling on a sphere for fibonacci lattice.
     
@@ -138,6 +141,7 @@ def save_fb_tiling_visualization_image(
         camera_position: The camera position.
         camera_up: The camera "up" vector.
         camera_focal_point: The focal point to focus on.
+        include_indices: True if indices should be printed on tile centers, False otherwise.
     """
 
      # Grab tile center points and tile boundaries.
@@ -155,7 +159,9 @@ def save_fb_tiling_visualization_image(
         for boundary in boundaries:
             tile_boundary_list.append(boundary)
 
-    pv.start_xvfb()  # Start the virtual framebuffer
+    if sys.platform.startswith("linux") and "DISPLAY" not in os.environ:
+        pv.start_xvfb()
+
 
     sphere_radius = 1 # Change the radius here
     sphere_opacity = 0.3  # Change the opacity here
@@ -164,34 +170,42 @@ def save_fb_tiling_visualization_image(
     sphere.color = 'grey'
 
     # Generate points for each arc in the boundaries
-    num_points = 50  # Number of points on the arc
+    num_points = 500  # Number of points on the arc
     t_values = np.linspace(0, 1, num_points)
 
     arc_points_list = []
-    line_segments = [] #redefine line_segments.
-    line_segment_count = 0 #keep track of segment number.
+    line_segments = [] # redefine line_segments.
+    line_segment_count = 0 # keep track of segment number.
 
     for boundary in tile_boundary_list:
         vec_start, vec_end = boundary
         arc_points = np.array([spherical_interpolation(vec_start, vec_end, t) for t in t_values])
         for i in range(len(arc_points) - 1):
-            arc_points_list.extend(arc_points[i:i+2]) #add the two points of the segment.
-            line_segments.append([2, line_segment_count*2, line_segment_count*2+1]) #create a line segment.
+            arc_points_list.extend(arc_points[i:i+2]) # add the two points of the segment.
+            line_segments.append([2, line_segment_count*2, line_segment_count*2+1]) # create a line segment.
             line_segment_count +=1
 
     # Create PolyData for lines
-    lines = pv.PolyData(np.array(arc_points_list)) #create the points.
-    lines.lines = np.array(line_segments).flatten() #define the lines.
+    lines = pv.PolyData(np.array(arc_points_list)) # create the points.
+    lines.lines = np.array(line_segments).flatten() # define the lines.
 
-    # Create PolyData for tile centers
-    points = pv.PolyData(np.column_stack((x, y, z)))
-    points['colors'] = np.array([[255, 0, 0]] * len(x))  # Red points
+     # Create PolyData for tile centers
+    centers = np.column_stack((x, y, z))
+    points = pv.PolyData(centers)
 
     # Create plotter
     plotter = pv.Plotter(off_screen=True)
     plotter.add_mesh(sphere)
     plotter.add_mesh(lines, color='black', line_width=2)
-    plotter.add_mesh(points, color='red', point_size=10) #plot tile centers
+
+     # Add larger markers for centers (spheres instead of just points)
+    for idx, (cx, cy, cz) in enumerate(centers):
+        plotter.add_mesh(pv.Sphere(radius=tile_center_size, center=(cx, cy, cz)), color='red')
+
+    # Add labels (tile indices)
+    if include_indices:
+        labels = [str(i) for i in range(tile_count)]
+        plotter.add_point_labels(points, labels, point_size=20, text_color="blue", font_size=12)
 
     # Set camera view
     plotter.camera.position = camera_position
@@ -327,11 +341,11 @@ def save_tiling_visualization_glb(
         output_dir: Path,
         output_prefix: str=""
         ):
-    """Saves a video of the tiling on a sphere for fibonacci lattice.
+    """Saves a .glb of the tiling on a sphere for fibonacci lattice.
     
     Args:
         tile_boundaries: The boundaries for the tiles to generate.
-        output_dir: Path for output video folder.
+        output_dir: Path for output .glb folder.
     """
 
     # Extract lines for tile boundary
