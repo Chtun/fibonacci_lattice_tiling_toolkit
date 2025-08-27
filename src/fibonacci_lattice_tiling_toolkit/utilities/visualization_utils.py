@@ -36,9 +36,6 @@ import numpy as np
 import pandas as pd
 import pyvista as pv
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation, FFMpegWriter
-from matplotlib.figure import Figure
-from matplotlib.axes import Axes
 from pathlib import Path
 from dataclasses import dataclass
 
@@ -48,13 +45,19 @@ from .data_utils import generate_fibonacci_lattice, spherical_interpolation, get
 
 def save_fb_tiling_visualization_glb(
         tile_count: int,
-        output_dir: Path
-        ):
+        output_dir: Path,
+        sphere_opacity: float = 1.0,
+        tile_center_size: float = 0.03,
+        include_indices: bool = False,
+    ):
     """Saves a video of the tiling on a sphere for fibonacci lattice.
     
     Args:
         tile_count: the number of Fibonacci lattice tiles to generate.
         output_dir: Path for output video folder.
+        sphere_opacity: The opacity of the sphere.
+        tile_center_size: The size of the tile center dot.
+        include_indices: True if including labels for each tile center's index, False otherwise.
     """
 
      # Grab tile center points and tile boundaries.
@@ -72,43 +75,92 @@ def save_fb_tiling_visualization_glb(
         for boundary in boundaries:
             tile_boundary_list.append(boundary)
 
-    pv.start_xvfb()  # Start the virtual framebuffer
+    if sys.platform.startswith("linux") and "DISPLAY" not in os.environ:
+        pv.start_xvfb()
 
-    sphere_radius = 1 # Change the radius here
-    sphere_opacity = 0.3  # Change the opacity here
+    # Create plotter
+    plotter = pv.Plotter(off_screen=True)
+
+    sphere_radius = 1
     sphere = pv.Sphere(radius=sphere_radius)
-    sphere.opacity = sphere_opacity
-    sphere.color = 'grey'
+    plotter.add_mesh(sphere, color='grey', opacity=sphere_opacity)
+
 
     # Generate points for each arc in the boundaries
-    num_points = 50  # Number of points on the arc
+    num_points = 500  # Number of points on the arc
     t_values = np.linspace(0, 1, num_points)
 
     arc_points_list = []
-    line_segments = [] #redefine line_segments.
-    line_segment_count = 0 #keep track of segment number.
+    line_segments = [] # redefine line_segments.
+    line_segment_count = 0 # keep track of segment number.
 
     for boundary in tile_boundary_list:
         vec_start, vec_end = boundary
         arc_points = np.array([spherical_interpolation(vec_start, vec_end, t) for t in t_values])
         for i in range(len(arc_points) - 1):
-            arc_points_list.extend(arc_points[i:i+2]) #add the two points of the segment.
-            line_segments.append([2, line_segment_count*2, line_segment_count*2+1]) #create a line segment.
+            arc_points_list.extend(arc_points[i:i+2]) # add the two points of the segment.
+            line_segments.append([2, line_segment_count*2, line_segment_count*2+1]) # create a line segment.
             line_segment_count +=1
 
     # Create PolyData for lines
-    lines = pv.PolyData(np.array(arc_points_list)) #create the points.
-    lines.lines = np.array(line_segments).flatten() #define the lines.
+    lines = pv.PolyData(np.array(arc_points_list)) # create the points.
+    lines.lines = np.array(line_segments).flatten() # define the lines.
 
-    # Create PolyData for tile centers
-    points = pv.PolyData(np.column_stack((x, y, z)))
-    points['colors'] = np.array([[255, 0, 0]] * len(x))  # Red points
+     # Create PolyData for tile centers
+    centers = np.column_stack((x, y, z))
+    points = pv.PolyData(centers)
 
-    # Create plotter
-    plotter = pv.Plotter(off_screen=True)
-    plotter.add_mesh(sphere)
     plotter.add_mesh(lines, color='black', line_width=2)
-    plotter.add_mesh(points, color='red', point_size=10) #plot tile centers
+
+     # Add larger markers for centers (spheres instead of just points)
+    # for idx, (cx, cy, cz) in enumerate(centers):
+    #     plotter.add_mesh(pv.Sphere(radius=tile_center_size, center=(cx, cy, cz)), color='red')
+
+    # Add index labels, if specified.
+    if include_indices:
+        label_height = 0.08 * sphere_radius   # text height
+        label_depth  = 0.1 * sphere_radius   # extrusion thickness
+        label_offset = 0.002 * sphere_radius  # lift above sphere
+
+        for idx, (cx, cy, cz) in enumerate(centers):
+            n = np.array([cx, cy, cz], dtype=float)
+            n /= np.linalg.norm(n)  # outward normal
+
+            # Create the text mesh
+            text = pv.Text3D(str(idx), depth=label_depth)
+            text.translate(-np.array(text.center), inplace=True)
+            text.scale([label_height]*3, inplace=True)
+
+            # Tangent plane: orient text along longitude (meridian)
+            # 1) normal = n (outward)
+            # 2) Y axis = north-south direction along the meridian
+            # Project the global north vector onto tangent plane
+            north = np.array([0.0, 1.0, 0.0])
+            meridian_dir = north - np.dot(north, n) * n
+            if np.linalg.norm(meridian_dir) < 1e-8:
+                # near poles, pick arbitrary perpendicular
+                meridian_dir = np.cross(n, np.array([1.0, 0.0, 0.0]))
+            meridian_dir /= np.linalg.norm(meridian_dir)
+
+            # X axis perpendicular to Y and Z
+            tangent_right = np.cross(meridian_dir, n)
+
+            # Build rotation matrix
+            R = np.eye(4)
+            R[:3, 0] = tangent_right  # X axis
+            R[:3, 1] = meridian_dir   # Y axis (text vertical)
+            R[:3, 2] = n              # Z axis (outward)
+            text.transform(R, inplace=True)
+
+            # Lift text slightly above the sphere
+            pos = (sphere_radius + label_offset) * n
+            text.translate(pos, inplace=True)
+
+            # Add to plotter
+            actor = plotter.add_mesh(text, color="blue")
+            actor.GetProperty().BackfaceCullingOff()
+
+
 
     plotter.enable_parallel_projection()
     plotter.show_axes_all()
@@ -130,9 +182,10 @@ def save_fb_tiling_visualization_image(
         camera_position: Tuple[float, float, float]=(0, 0, 5),
         camera_up: Tuple[float, float, float]= (0, 1, 0),
         camera_focal_point: Tuple[float, float, float] = (0,0,0),
+        sphere_opacity: float = 1,
         tile_center_size: float = 0.03,
         include_indices: bool = False,
-        ):
+    ):
     """Saves a video of the tiling on a sphere for fibonacci lattice.
     
     Args:
@@ -162,12 +215,13 @@ def save_fb_tiling_visualization_image(
     if sys.platform.startswith("linux") and "DISPLAY" not in os.environ:
         pv.start_xvfb()
 
+    # Create plotter
+    plotter = pv.Plotter(off_screen=True)
 
-    sphere_radius = 1 # Change the radius here
-    sphere_opacity = 0.3  # Change the opacity here
+    sphere_radius = 1
     sphere = pv.Sphere(radius=sphere_radius)
-    sphere.opacity = sphere_opacity
-    sphere.color = 'grey'
+    plotter.add_mesh(sphere, color='grey', opacity=sphere_opacity)
+
 
     # Generate points for each arc in the boundaries
     num_points = 500  # Number of points on the arc
@@ -193,19 +247,35 @@ def save_fb_tiling_visualization_image(
     centers = np.column_stack((x, y, z))
     points = pv.PolyData(centers)
 
-    # Create plotter
-    plotter = pv.Plotter(off_screen=True)
-    plotter.add_mesh(sphere)
     plotter.add_mesh(lines, color='black', line_width=2)
 
-     # Add larger markers for centers (spheres instead of just points)
-    for idx, (cx, cy, cz) in enumerate(centers):
-        plotter.add_mesh(pv.Sphere(radius=tile_center_size, center=(cx, cy, cz)), color='red')
+    # # Add larger markers for centers (spheres instead of just points)
+    # for idx, (cx, cy, cz) in enumerate(centers):
+    #     plotter.add_mesh(pv.Sphere(radius=tile_center_size, center=(cx, cy, cz)), color='red')
 
-    # Add labels (tile indices)
     if include_indices:
+        label_offset = 0.00 * sphere_radius  # lift above tile center
         labels = [str(i) for i in range(tile_count)]
-        plotter.add_point_labels(points, labels, point_size=20, text_color="blue", font_size=12)
+
+        # Compute positions slightly above sphere
+        centers = np.column_stack((x, y, z))
+        norms = centers / np.linalg.norm(centers, axis=1)[:, None]
+        label_positions = centers + norms * label_offset
+
+        label_points = pv.PolyData(label_positions)
+
+        # Add only text, hide any point glyph or background
+        plotter.add_point_labels(
+            label_points,
+            labels,
+            text_color="blue",
+            font_size=20,
+            show_points=False,
+            background_color='white',
+            background_opacity=1.0,
+            shape_opacity=0.0  # hides any default square or background
+        )
+
 
     # Set camera view
     plotter.camera.position = camera_position
@@ -229,13 +299,18 @@ def save_fb_tiling_visualization_image(
 
     plotter.close()
 
-def save_fb_tiling_visualization_video(tile_count: int, output_dir: Path, horizontal_pan: bool=True, vertical_pan: bool=True):
+def save_fb_tiling_visualization_video(
+        tile_count: int,
+        output_dir: Path,
+        horizontal_pan: bool=True,
+        vertical_pan: bool=True
+    ):
     """Saves a video of the tiling on a sphere for fibonacci lattice.
     
     Args:
         tile_count: the number of Fibonacci lattice tiles to generate.
         output_dir: Path for output video folder.
-        horizontal_pan: Whetehr to horizontally pan on the video.
+        horizontal_pan: Whether to horizontally pan on the video.
         vertical_pan: Whether to vertically pan on the video.
     """
 
@@ -339,13 +414,17 @@ def save_fb_tiling_visualization_video(tile_count: int, output_dir: Path, horizo
 def save_tiling_visualization_glb(
         tile_boundaries: Dict[int, List[List[Vector]]],
         output_dir: Path,
-        output_prefix: str=""
+        output_prefix: str="",
+        sphere_opacity: float = 1,
         ):
     """Saves a .glb of the tiling on a sphere for fibonacci lattice.
     
     Args:
         tile_boundaries: The boundaries for the tiles to generate.
         output_dir: Path for output .glb folder.
+        sphere_opacity: The opacity of the sphere.
+        tile_center_size: The size of the tile center dot.
+        include_indices: True if including labels for each tile center's index, False otherwise.
     """
 
     # Extract lines for tile boundary
@@ -357,7 +436,6 @@ def save_tiling_visualization_glb(
     pv.start_xvfb()  # Start the virtual framebuffer
 
     sphere_radius = 1 # Change the radius here
-    sphere_opacity = 0.3  # Change the opacity here
     sphere = pv.Sphere(radius=sphere_radius)
     sphere.opacity = sphere_opacity
     sphere.color = 'grey'
@@ -367,20 +445,20 @@ def save_tiling_visualization_glb(
     t_values = np.linspace(0, 1, num_points)
 
     arc_points_list = []
-    line_segments = [] #redefine line_segments.
-    line_segment_count = 0 #keep track of segment number.
+    line_segments = [] # redefine line_segments.
+    line_segment_count = 0 # keep track of segment number.
 
     for boundary in tile_boundary_list:
         vec_start, vec_end = boundary
         arc_points = np.array([spherical_interpolation(vec_start, vec_end, t) for t in t_values])
         for i in range(len(arc_points) - 1):
-            arc_points_list.extend(arc_points[i:i+2]) #add the two points of the segment.
+            arc_points_list.extend(arc_points[i:i+2]) # add the two points of the segment.
             line_segments.append([2, line_segment_count*2, line_segment_count*2+1]) #create a line segment.
             line_segment_count +=1
 
     # Create PolyData for lines
-    lines = pv.PolyData(np.array(arc_points_list)) #create the points.
-    lines.lines = np.array(line_segments).flatten() #define the lines.
+    lines = pv.PolyData(np.array(arc_points_list)) # create the points.
+    lines.lines = np.array(line_segments).flatten() # define the lines.
 
     # Create plotter
     plotter = pv.Plotter(off_screen=True)
