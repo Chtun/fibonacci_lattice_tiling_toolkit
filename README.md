@@ -561,13 +561,6 @@ config = HeatmapConfig(
 )
 ```
 
-## Documentation
-
-- [API Reference](docs/API_REFERENCE.md)
-- [Installation Guide](docs/installation.md)
-- [Contributing Guidelines](docs/CONTRIBUTING.md)
-- [Example Scripts](examples/README.md)
-
 ## Project Structure
 
 ```
