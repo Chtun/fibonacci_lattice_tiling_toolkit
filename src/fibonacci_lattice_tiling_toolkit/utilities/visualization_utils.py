@@ -38,6 +38,7 @@ import pyvista as pv
 import matplotlib.pyplot as plt
 from pathlib import Path
 from dataclasses import dataclass
+from PIL import Image
 
 from fibonacci_lattice_tiling_toolkit import Vector, RadialPoint, ValidationError, convert_vectors_to_coordinates
 from .data_utils import generate_fibonacci_lattice, spherical_interpolation, get_FB_tile_boundaries, get_tile_corners
@@ -180,7 +181,7 @@ def save_fb_tiling_visualization_image(
         tile_count: int,
         output_dir: Path,
         camera_position: Tuple[float, float, float]=(0, 0, 5),
-        camera_up: Tuple[float, float, float]= (0, 1, 0),
+        camera_up: Tuple[float, float, float]= (0, 0, 1),
         camera_focal_point: Tuple[float, float, float] = (0,0,0),
         sphere_opacity: float = 1,
         tile_center_size: float = 0.03,
@@ -302,6 +303,8 @@ def save_fb_tiling_visualization_image(
 def save_fb_tiling_visualization_video(
         tile_count: int,
         output_dir: Path,
+        sphere_opacity: float = 1,
+        sphere_color: str = 'grey',
         horizontal_pan: bool=True,
         vertical_pan: bool=True
     ):
@@ -332,13 +335,15 @@ def save_fb_tiling_visualization_video(
         for boundary in boundaries:
             tile_boundary_list.append(boundary)
 
-    pv.start_xvfb()  # Start the virtual framebuffer
+    if sys.platform.startswith('linux') and "DISPLAY" not in os.environ:
+        pv.start_xvfb()  # Start the virtual framebuffer
+
+    # Create plotter
+    plotter = pv.Plotter(off_screen=True)
 
     sphere_radius = 1 # Change the radius here
-    sphere_opacity = 0.3  # Change the opacity here
     sphere = pv.Sphere(radius=sphere_radius)
-    sphere.opacity = sphere_opacity
-    sphere.color = 'grey'
+    plotter.add_mesh(sphere, color=sphere_color, opacity=sphere_opacity)
 
     # Generate points for each arc in the boundaries
     num_points = 50  # Number of points on the arc
@@ -364,9 +369,6 @@ def save_fb_tiling_visualization_video(
     points = pv.PolyData(np.column_stack((x, y, z)))
     points['colors'] = np.array([[255, 0, 0]] * len(x))  # Red points
 
-    # Create plotter
-    plotter = pv.Plotter(off_screen=True)
-    plotter.add_mesh(sphere)
     plotter.add_mesh(lines, color='black', line_width=2)
     plotter.add_mesh(points, color='red', point_size=10) #plot tile centers
 
@@ -416,6 +418,7 @@ def save_tiling_visualization_glb(
         output_dir: Path,
         output_prefix: str="",
         sphere_opacity: float = 1,
+        sphere_color: str = 'grey',
         ):
     """Saves a .glb of the tiling on a sphere for fibonacci lattice.
     
@@ -433,12 +436,15 @@ def save_tiling_visualization_glb(
         for boundary in boundaries:
             tile_boundary_list.append(boundary)
 
-    pv.start_xvfb()  # Start the virtual framebuffer
+    if sys.platform.startswith('linux') and "DISPLAY" not in os.environ:
+        pv.start_xvfb()  # Start the virtual framebuffer
+
+    # Create plotter
+    plotter = pv.Plotter(off_screen=True)
 
     sphere_radius = 1 # Change the radius here
     sphere = pv.Sphere(radius=sphere_radius)
-    sphere.opacity = sphere_opacity
-    sphere.color = 'grey'
+    plotter.add_mesh(sphere, color=sphere_color, opacity=sphere_opacity)
 
     # Generate points for each arc in the boundaries
     num_points = 50  # Number of points on the arc
@@ -460,9 +466,6 @@ def save_tiling_visualization_glb(
     lines = pv.PolyData(np.array(arc_points_list)) # create the points.
     lines.lines = np.array(line_segments).flatten() # define the lines.
 
-    # Create plotter
-    plotter = pv.Plotter(off_screen=True)
-    plotter.add_mesh(sphere)
     plotter.add_mesh(lines, color='black', line_width=2)
 
     plotter.enable_parallel_projection()
@@ -481,8 +484,11 @@ def save_tiling_visualization_image(
         tile_boundaries: Dict[int, List[List[Vector]]],
         output_dir: Path,
         output_prefix: str="",
+        erp_image_path: str = None,
+        sphere_opacity: float = 1,
+        sphere_color: str = 'grey',
         camera_position: Tuple[float, float, float]=(0, 0, 5),
-        camera_up: Tuple[float, float, float]= (0, 1, 0),
+        camera_up: Tuple[float, float, float]= (0, 0, 1),
         camera_focal_point: Tuple[float, float, float] = (0,0,0),
         camera_azimuth: int = 0,
         camera_elevation: int = 0
@@ -505,17 +511,53 @@ def save_tiling_visualization_image(
         for boundary in boundaries:
             tile_boundary_list.append(boundary)
 
-    pv.start_xvfb()  # Start the virtual framebuffer
+    if sys.platform.startswith('linux') and "DISPLAY" not in os.environ:
+        pv.start_xvfb()  # Start the virtual framebuffer
+
+    # Create plotter
+    plotter = pv.Plotter(off_screen=True)
 
     sphere_radius = 1 # Change the radius here
-    sphere_opacity = 0.3  # Change the opacity here
     sphere = pv.Sphere(radius=sphere_radius)
-    sphere.opacity = sphere_opacity
-    sphere.color = 'grey'
+
+    # Align sphere so the ERP image starts at the correct meridian
+    sphere.rotate_x(-90, inplace=True) 
 
     # Generate points for each arc in the boundaries
     num_points = 50  # Number of points on the arc
     t_values = np.linspace(0, 1, num_points)
+
+    # 1. Manually calculate the ERP coordinates to fix the 2x width issue
+    xyz = sphere.points
+    # Longitude: -pi to pi -> 0 to 1
+    u = (np.arctan2(xyz[:, 1], xyz[:, 0]) + np.pi) / (2 * np.pi)
+    # Latitude: -pi/2 to pi/2 -> 0 to 1
+    v = (np.arcsin(np.clip(xyz[:, 2], -1.0, 1.0)) + np.pi/2) / np.pi
+    
+    # 2. Create a VTK-compatible array
+    # We use pv.pyvista_ndarray to ensure it's wrapped correctly for VTK
+    uv_array = pv.convert_array(np.column_stack((u, v)).astype(np.float32))
+
+    # 3. Use the logic from the "Underlying Stuff" you found
+    # This bypasses the attribute checks and sets the texture coordinates directly
+    sphere.GetPointData().SetTCoords(uv_array)
+
+    if erp_image_path and os.path.exists(erp_image_path):
+        with Image.open(erp_image_path) as img:
+            w, h = img.size
+            # If it's not 2:1, resize it
+            if w != 2 * h:
+                # Target a 2:1 ratio based on width
+                target_w = w
+                target_h = w // 2
+                img = img.resize((target_w, target_h), Image.LANCZOS)
+            
+            # Convert the PIL image (RGB) to a PyVista texture object
+            texture = pv.Texture(np.array(img.convert('RGB')))
+        # Now add_mesh will find the 'tcoords' generated above
+        plotter.add_mesh(sphere, texture=texture, opacity=sphere_opacity, smooth_shading=True)
+    else:    
+        plotter.add_mesh(sphere, color=sphere_color, opacity=sphere_opacity)
 
     arc_points_list = []
     line_segments = [] #redefine line_segments.
@@ -533,9 +575,6 @@ def save_tiling_visualization_image(
     lines = pv.PolyData(np.array(arc_points_list)) #create the points.
     lines.lines = np.array(line_segments).flatten() #define the lines.
 
-    # Create plotter
-    plotter = pv.Plotter(off_screen=True)
-    plotter.add_mesh(sphere)
     plotter.add_mesh(lines, color='black', line_width=2)
 
     # Set camera view
@@ -566,10 +605,12 @@ def save_tiling_visualization_video(
         tile_boundaries: Dict[int, List[List[Vector]]],
         output_dir: Path,
         output_prefix: str="",
+        sphere_opacity: float = 1,
+        sphere_color: str = 'grey',
         horizontal_pan: bool=True,
         vertical_pan: bool=True,
         camera_position: Tuple[float, float, float]=(0, 0, 5),
-        camera_up: Tuple[float, float, float]= (0, 1, 0),
+        camera_up: Tuple[float, float, float]= (0, 0, 1),
         camera_focal_point: Tuple[float, float, float] = (0,0,0)
         ):
     """Saves a video of the tiling on a sphere for fibonacci lattice.
@@ -593,13 +634,15 @@ def save_tiling_visualization_video(
         for boundary in boundaries:
             tile_boundary_list.append(boundary)
 
-    pv.start_xvfb()  # Start the virtual framebuffer
+    if sys.platform.startswith('linux') and "DISPLAY" not in os.environ:
+        pv.start_xvfb()  # Start the virtual framebuffer
+
+    # Create plotter
+    plotter = pv.Plotter(off_screen=True)
 
     sphere_radius = 1 # Change the radius here
-    sphere_opacity = 0.3  # Change the opacity here
     sphere = pv.Sphere(radius=sphere_radius)
-    sphere.opacity = sphere_opacity
-    sphere.color = 'grey'
+    plotter.add_mesh(sphere, color=sphere_color, opacity=sphere_opacity)
 
     # Generate points for each arc in the boundaries
     num_points = 50  # Number of points on the arc
@@ -621,9 +664,6 @@ def save_tiling_visualization_video(
     lines = pv.PolyData(np.array(arc_points_list)) #create the points.
     lines.lines = np.array(line_segments).flatten() #define the lines.
 
-    # Create plotter
-    plotter = pv.Plotter(off_screen=True)
-    plotter.add_mesh(sphere)
     plotter.add_mesh(lines, color='black', line_width=2)
 
     # Set view and remove axes
@@ -740,7 +780,9 @@ def save_tiling_visualization_with_weights(
         step: The number of lines to draw for each patch (higher gives better meshes).
         output_prefix: The prefix before the standard file name.
     """
-    pv.start_xvfb()
+    if sys.platform.startswith('linux') and "DISPLAY" not in os.environ:
+        pv.start_xvfb()
+
     plotter = pv.Plotter(off_screen=True)
 
     sphere_radius = 1
@@ -796,11 +838,9 @@ def plot_points_on_sphere(
         output_dir: The path to the folder to save the file to.
         output_prefix: A prefix to place before the standard file name.
     """
-    import pyvista as pv
-    import numpy as np
-    import os
 
-    pv.start_xvfb()
+    if sys.platform.startswith('linux') and "DISPLAY" not in os.environ:
+        pv.start_xvfb()
     plotter = pv.Plotter()
 
     # Create the black sphere with higher resolution
