@@ -2,9 +2,7 @@ from fibonacci_lattice_tiling_toolkit.utilities.data_utils import compute_CMP_ti
 from fibonacci_lattice_tiling_toolkit.data_types import Vector
 from fibonacci_lattice_tiling_toolkit.utilities.visualization_utils import save_tiling_visualization_image, save_tiling_visualization_video
 import matplotlib.pyplot as plt
-from typing import Tuple, Dict, List
 import numpy as np
-import csv
 from pathlib import Path
 import matplotlib.patches as patches
 import matplotlib.cm as cm
@@ -90,10 +88,6 @@ for num_tiles in ERP_tile_list:
     CMP_num_tiles_vertical = CMP_num_tiles_horizontal
     CMP_tile_count = CMP_num_tiles_horizontal * CMP_num_tiles_vertical * 6
 
-    print(f"Number of tiles per CMP face: {tiles_per_CMP_face}")
-    print(f"CMP Number of tiles horizontally: {CMP_num_tiles_horizontal}")
-    print(f"CMP Number of tiles vertically: {CMP_num_tiles_vertical}")
-
     # Generate tiles for Fibonacci lattice tiling, ERP tiling, and CMP tiling
     # FB_tile_boundaries = get_FB_tile_boundaries(FB_tile_count)
     ERP_tile_boundaries = get_ERP_tile_boundaries(num_tiles_horizontal=ERP_num_tiles_horizontal, num_tiles_vertical=ERP_num_tiles_vertical)
@@ -105,15 +99,15 @@ for num_tiles in ERP_tile_list:
 
         for camera_position in camera_positions:
 
-            # output_prefix = f"azimuth_{camera_azimuth}-elevation_{camera_elevation}_FB_({FB_tile_count})_tiling-"
+            output_prefix = f"azimuth_{camera_azimuth}-elevation_{camera_elevation}_FB_({FB_tile_count})_tiling-"
 
-            # save_tiling_visualization_image(
-            #     tile_boundaries=FB_tile_boundaries,
-            #     output_dir=output_dir,
-            #     output_prefix=output_prefix,
-            #     camera_azimuth=camera_azimuth,
-            #     camera_elevation=camera_elevation,
-            #     camera_position=camera_position)
+            save_tiling_visualization_image(
+                tile_boundaries=FB_tile_boundaries,
+                output_dir=output_dir,
+                output_prefix=output_prefix,
+                camera_azimuth=camera_azimuth,
+                camera_elevation=camera_elevation,
+                camera_position=camera_position)
 
             output_prefix = f"azimuth_{camera_azimuth}-elevation_{camera_elevation}_ERP_({ERP_tile_count})_tiling-"
 
@@ -126,12 +120,12 @@ for num_tiles in ERP_tile_list:
                 camera_elevation=camera_elevation,
                 camera_position=camera_position)
 
-            # output_prefix = f"azimuth_{camera_azimuth}-elevation_{camera_elevation}_CMP_({CMP_tile_count})_tiling-"
+            output_prefix = f"azimuth_{camera_azimuth}-elevation_{camera_elevation}_CMP_({CMP_tile_count})_tiling-"
 
-            # save_tiling_visualization_image(
-            #     tile_boundaries=CMP_tile_boundaries,
-            #     output_dir=output_dir,
-            #     output_prefix=output_prefix,
-            #     camera_azimuth=camera_azimuth,
-            #     camera_elevation=camera_elevation,
-            #     camera_position=camera_position)
+            save_tiling_visualization_image(
+                tile_boundaries=CMP_tile_boundaries,
+                output_dir=output_dir,
+                output_prefix=output_prefix,
+                camera_azimuth=camera_azimuth,
+                camera_elevation=camera_elevation,
+                camera_position=camera_position)

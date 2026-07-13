@@ -47,9 +47,11 @@ from .data_utils import generate_fibonacci_lattice, spherical_interpolation, get
 def save_fb_tiling_visualization_glb(
         tile_count: int,
         output_dir: Path,
+        connections: Dict[str, List[Tuple[int, int]]] = None,
         sphere_opacity: float = 1.0,
         tile_center_size: float = 0.03,
         include_indices: bool = False,
+        bw_only: bool = False,
     ):
     """Saves a video of the tiling on a sphere for fibonacci lattice.
     
@@ -57,6 +59,7 @@ def save_fb_tiling_visualization_glb(
         tile_count: the number of Fibonacci lattice tiles to generate.
         output_dir: Path for output video folder.
         sphere_opacity: The opacity of the sphere.
+        connections: Dict mapping colors to lists of (idx1, idx2) tuples.
         tile_center_size: The size of the tile center dot.
         include_indices: True if including labels for each tile center's index, False otherwise.
     """
@@ -84,7 +87,7 @@ def save_fb_tiling_visualization_glb(
 
     sphere_radius = 1
     sphere = pv.Sphere(radius=sphere_radius)
-    plotter.add_mesh(sphere, color='grey', opacity=sphere_opacity)
+    plotter.add_mesh(sphere, color='white', opacity=sphere_opacity)
 
 
     # Generate points for each arc in the boundaries
@@ -106,60 +109,109 @@ def save_fb_tiling_visualization_glb(
     # Create PolyData for lines
     lines = pv.PolyData(np.array(arc_points_list)) # create the points.
     lines.lines = np.array(line_segments).flatten() # define the lines.
+    plotter.add_mesh(lines, color='black', line_width=2)
+
 
      # Create PolyData for tile centers
     centers = np.column_stack((x, y, z))
     points = pv.PolyData(centers)
 
-    plotter.add_mesh(lines, color='black', line_width=2)
+    # Add in connections if needed.
+    if connections:
+        arc_lift = 1.002
+        line_width = 0.004
 
-     # Add larger markers for centers (spheres instead of just points)
-    # for idx, (cx, cy, cz) in enumerate(centers):
-    #     plotter.add_mesh(pv.Sphere(radius=tile_center_size, center=(cx, cy, cz)), color='red')
+        for color, index_pairs in connections.items():
+            if bw_only:
+                color = 'grey'
 
-    # Add index labels, if specified.
+            for idx1, idx2 in index_pairs:
+                # Filter out negative indices (used for 2D padding/wrapping)
+                if 0 <= idx1 < tile_count and 0 <= idx2 < tile_count:
+                    v1 = tile_centers_vectors[idx1]
+                    v2 = tile_centers_vectors[idx2]
+                    
+                    # Generate the Great Circle arc
+                    conn_pts = np.array([spherical_interpolation(v1, v2, t) for t in t_values])
+                    conn_pts *= (arc_lift + 0.001) # Sit slightly above boundaries
+                    
+                    connection_polyline = pv.MultipleLines(conn_pts)
+                    tube_mesh = connection_polyline.tube(radius=line_width)
+                    plotter.add_mesh(tube_mesh, color=color, lighting=False)
+            
+            if bw_only:
+                line_width += 0.004
+
+
+
+    # Add indices, if wanted.
     if include_indices:
-        label_height = 0.08 * sphere_radius   # text height
-        label_depth  = 0.1 * sphere_radius   # extrusion thickness
-        label_offset = 0.002 * sphere_radius  # lift above sphere
+        label_height = 0.08 * sphere_radius
+        label_depth  = 0.1 * sphere_radius
+        label_offset = 0.01 * sphere_radius  # Increased slightly for better visibility
 
         for idx, (cx, cy, cz) in enumerate(centers):
             n = np.array([cx, cy, cz], dtype=float)
-            n /= np.linalg.norm(n)  # outward normal
+            n /= np.linalg.norm(n)  # Normal vector (Local Z)
 
-            # Create the text mesh
+            # 1. Define the Local "Up" (Vertical axis of the text)
+            # We want the text to point toward the North Pole [0, 1, 0]
+            global_north = np.array([0.0, 0.0, 1.0])
+            
+            # The 'up' direction in the tangent plane is the projection of north onto the plane
+            # tangent_up = global_north - (global_north dot n) * n
+            tangent_up = global_north - np.dot(global_north, n) * n
+            
+            # Handle the singularity at the exact poles
+            if np.linalg.norm(tangent_up) < 1e-8:
+                # If at the pole, use the global 'forward' or 'right' as a fallback
+                tangent_up = np.array([0.0, 0.0, -1.0]) if n[1] > 0 else np.array([0.0, 0.0, 1.0])
+            else:
+                tangent_up /= np.linalg.norm(tangent_up)
+
+            # 2. Define the Local "Right" (Horizontal axis of the text)
+            # This is perpendicular to the normal and the tangent_up
+            tangent_right = np.cross(tangent_up, n)
+            tangent_right /= np.linalg.norm(tangent_right)
+
+            # 3. Create and transform the text mesh
             text = pv.Text3D(str(idx), depth=label_depth)
+            
+            # Center the text geometry at (0,0,0) before rotating
             text.translate(-np.array(text.center), inplace=True)
             text.scale([label_height]*3, inplace=True)
 
-            # Tangent plane: orient text along longitude (meridian)
-            # 1) normal = n (outward)
-            # 2) Y axis = north-south direction along the meridian
-            # Project the global north vector onto tangent plane
-            north = np.array([0.0, 1.0, 0.0])
-            meridian_dir = north - np.dot(north, n) * n
-            if np.linalg.norm(meridian_dir) < 1e-8:
-                # near poles, pick arbitrary perpendicular
-                meridian_dir = np.cross(n, np.array([1.0, 0.0, 0.0]))
-            meridian_dir /= np.linalg.norm(meridian_dir)
-
-            # X axis perpendicular to Y and Z
-            tangent_right = np.cross(meridian_dir, n)
-
-            # Build rotation matrix
+            # 4. Build the Rotation Matrix
+            # Column 0: Local X (Right), Column 1: Local Y (Up), Column 2: Local Z (Outward)
             R = np.eye(4)
-            R[:3, 0] = tangent_right  # X axis
-            R[:3, 1] = meridian_dir   # Y axis (text vertical)
-            R[:3, 2] = n              # Z axis (outward)
+            R[:3, 0] = tangent_right
+            R[:3, 1] = tangent_up
+            R[:3, 2] = n
+            
             text.transform(R, inplace=True)
 
-            # Lift text slightly above the sphere
+            # 5. Position the text
             pos = (sphere_radius + label_offset) * n
             text.translate(pos, inplace=True)
 
             # Add to plotter
-            actor = plotter.add_mesh(text, color="blue")
+            if not bw_only:
+                text_color = "blue"
+            else:
+                text_color = "black"
+
+            actor = plotter.add_mesh(text, color=text_color)
             actor.GetProperty().BackfaceCullingOff()
+    # Otherwise, add a red dot for the center of the tile.
+    else:
+
+        if not bw_only:
+            dot_color = "red"
+        else:
+            dot_color = "grey"
+
+        for idx, (cx, cy, cz) in enumerate(centers):
+            plotter.add_mesh(pv.Sphere(radius=tile_center_size, center=(cx, cy, cz)), color=dot_color)
 
 
 

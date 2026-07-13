@@ -133,6 +133,35 @@ class RadialPoint:
         return (self.lon, self.lat)
 
 
+@dataclass()
+class ZThetaPoint:
+    """Represents a point in z-theta coordinates.
+    
+    This class represents a point on a sphere using theta and z coordinates, an equal area projection.
+    
+    At theta = 0 and z = 0, the equivalent vector would be (x=1, y=0, z=0).
+
+    Attributes:
+        theta (float): Longitude in degrees, range [-180, 180].
+        z (float): Height, in cartesian coordinates. [-1, 1].
+    
+    Raises:
+        ValidationError: If coordinates are outside their valid ranges.
+    """
+    theta: float
+    z: float
+    validate: bool = True
+
+    def __post_init__(self) -> None:
+        """Validates spherical coordinates after initialization."""
+        if self.validate:
+            if not -180 <= self.theta <= 180:
+                raise ValidationError("Theta must be between -180 and 180 degrees.")
+            if not -1 <= self.z <= 1:
+                raise ValidationError("Z must be between -1 and 1.")
+
+
+
 @dataclass(frozen=True)
 class Vector:
     """Represents a point in 3D Cartesian coordinates.
@@ -234,6 +263,20 @@ class Vector:
                 lon=_lon,
                 lat=_lat
             )
+    
+    def to_z_theta(self) -> ZThetaPoint:
+        _theta = float(round(np.degrees(np.arctan2(self.y, self.x)), 6))
+        _z = self.z
+
+        if _theta > 180:
+            _theta -= 360
+        elif _theta <= -180:
+            _theta += 360
+
+        return ZThetaPoint(
+            theta=_theta,
+            z=_z
+        )
     
     @classmethod
     def from_string(cls, vector_str: str):
